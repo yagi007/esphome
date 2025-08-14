@@ -117,6 +117,10 @@ lvgl:
                         radius: 8
                         on_press:
                           - lvgl.pause:
+                          - globals.set:
+                              id: manual_display_off
+                              value: 'true'
+                          - script.execute: touch_ignore_short
                           - switch.turn_off: lcdbacklight
                           - delay: 500ms
                         widgets:

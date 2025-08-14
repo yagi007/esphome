@@ -78,6 +78,9 @@ globals:
   - id: manual_display_off
     type: bool
     initial_value: 'false'
+  - id: ignore_touch
+    type: bool
+    initial_value: 'false'
 
 
 
@@ -92,6 +95,16 @@ script:
           then:
             - switch.turn_on: lcdbacklight
             - lvgl.resume:
+
+  - id: touch_ignore_short
+    then:
+      - globals.set:
+          id: ignore_touch
+          value: 'true'
+      - delay: 800ms
+      - globals.set:
+          id: ignore_touch
+          value: 'false'
 
 
 # Manuální deep sleep ovládaný z UI (tlačítko v navigaci)
@@ -143,9 +156,19 @@ touchscreen:
   on_release:
     - if:
         condition:
-          switch.is_off: lcdbacklight
+          and:
+            - switch.is_off: lcdbacklight
+            - lambda: 'return !id(ignore_touch);'
         then:
-          - script.execute: touch_wake
+          - if:
+              condition:
+                lambda: 'return id(manual_display_off);'
+              then:
+                - globals.set:
+                    id: manual_display_off
+                    value: 'false'
+              else:
+                - script.execute: touch_wake
 
 # Display
 display:

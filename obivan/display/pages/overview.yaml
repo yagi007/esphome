@@ -10,7 +10,7 @@ lvgl:
     - id: page_overview
       bg_color: 0x000000  # Jednotné černé pozadí
       widgets:
-        # Jednotné rozhraní: tři sloupce v jednom kontejneru
+        # Jednotné rozhraní: 3 boxy v absolutních pozicích + overlay s linkami
         - obj: #main_container
             id: energy_flow
             width: 100%
@@ -21,343 +21,322 @@ lvgl:
             scrollbar_mode: "OFF"
             scrollable: false
             pad_all: 0
-            layout:
-              type: FLEX
-              flex_flow: ROW_WRAP
-              pad_column: 0
-              pad_row: 0
             widgets:
-              # LEVÝ SLOUPEC: MPPT a DC/DC
-              - obj:
-                  id: sources_column
-                  scrollable: false
-                  width: 232
-                  height: 100%
-                  bg_opa: TRANSP
+              # Levý horní: Solar
+              - obj: # solar_card
+                  id: solar_card
+                  x: 16
+                  y: 16
+                  width: 200
+                  height: 158
+                  bg_color: 0x0A0A0A
+                  bg_opa: COVER
+                  radius: 8
+                  pad_all: 10
                   border_width: 1
-                  border_color: 0x0000ff
-                  layout:
-                    type: FLEX
-                    flex_flow: COLUMN
-                    pad_row: 16
-                    pad_column: 16
+                  border_color: 0xFF9800
                   widgets:
-                    - obj: # solar_card
-                        id: solar_card
-                        width: 200
-                        height: 158
-                        bg_color: 0x0A0A0A
-                        bg_opa: COVER
-                        radius: 8
-                        pad_all: 10
-                        border_width: 1
-                        border_color: 0xFF9800
-                        widgets:
-                          - label:
-                              align: TOP_LEFT
-                              text: "\U000F1A74"
-                              text_font: mdi
-                              text_color: 0xFF9800
-                          - label:
-                              align: TOP_LEFT
-                              x: 28
-                              text: "Solar"
-                              text_font: roboto
-                              text_color: 0xFFFFFF
-                          - label:
-                              id: solar_pv_power
-                              align: LEFT_MID
-                              y: -10
-                              text: "0W"
-                              text_font: roboto_big
-                              text_color: 0xFF9800
-                          - label:
-                              id: solar_battery_current
-                              align: LEFT_MID
-                              y: 15
-                              text: "> 0.0A"
-                              text_font: roboto
-                              text_color: 0x4CAF50
-                          - label:
-                              id: solar_yield_today
-                              align: BOTTOM_RIGHT
-                              y: -6
-                              text: "0.0kWh"
-                              text_font: roboto_sm
-                              text_color: 0xCCCCCC
-                    - obj: # dcdc_card
-                        id: dcdc_card
-                        width: 200
-                        height: 158
-                        bg_color: 0x0A0A0A
-                        bg_opa: COVER
-                        radius: 8
-                        pad_all: 10
-                        border_width: 1
-                        border_color: 0x2196F3
-                        widgets:
-                          - label:
-                              align: TOP_LEFT
-                              text: "\U000F010B"
-                              text_font: mdi
-                              text_color: 0x2196F3
-                          - label:
-                              align: TOP_LEFT
-                              x: 28
-                              text: "DC/DC"
-                              text_font: roboto
-                              text_color: 0xFFFFFF
-                          - label:
-                              id: dcdc_output_power
-                              align: LEFT_MID
-                              y: -10
-                              text: "0W"
-                              text_font: roboto_big
-                              text_color: 0x2196F3
-                          - label:
-                              id: dcdc_output_current
-                              align: LEFT_MID
-                              y: 15
-                              text: "> 0.0A"
-                              text_font: roboto
-                              text_color: 0x4CAF50
-                          - label:
-                              id: dcdc_efficiency
-                              align: BOTTOM_RIGHT
-                              y: -6
-                              text: "0%"
-                              text_font: roboto_sm
-                              text_color: 0xCCCCCC
+                    - label:
+                        align: TOP_LEFT
+                        text: "\U000F1A74"
+                        text_font: mdi
+                        text_color: 0xFF9800
+                    - label:
+                        align: TOP_LEFT
+                        x: 28
+                        text: "Solar"
+                        text_font: roboto
+                        text_color: 0xFFFFFF
+                    - label:
+                        id: solar_pv_power
+                        align: LEFT_MID
+                        y: -10
+                        text: "0W"
+                        text_font: roboto_big
+                        text_color: 0xFF9800
+                    - label:
+                        id: solar_battery_current
+                        align: LEFT_MID
+                        y: 15
+                        text: "> 0.0A"
+                        text_font: roboto
+                        text_color: 0x4CAF50
+                    - label:
+                        id: solar_yield_today
+                        align: BOTTOM_RIGHT
+                        y: -6
+                        text: "0.0kWh"
+                        text_font: roboto_sm
+                        text_color: 0xCCCCCC
 
-              # STŘEDNÍ SLOUPEC: Baterie (vysoký blok + rezerva pro BMS)
-              - obj:
-                  id: battery_column
-                  scrollable: false
-#                  width: 0
-                  height: 100%
-                  bg_opa: TRANSP
+              # Levý dolní: DC/DC
+              - obj: # dcdc_card
+                  id: dcdc_card
+                  x: 16
+                  y: 190
+                  width: 200
+                  height: 158
+                  bg_color: 0x0A0A0A
+                  bg_opa: COVER
+                  radius: 8
+                  pad_all: 10
                   border_width: 1
-                  border_color: 0x00ff00
-                  layout:
-                    type: FLEX
-                    flex_flow: COLUMN
-                    pad_row: 12
-                  flex_grow: 1
+                  border_color: 0x2196F3
                   widgets:
-                    - obj: # battery_main_card
-                        id: battery_main
-                        width: 260
-                        height: 260
-                        bg_color: 0x111111
-                        bg_opa: COVER
-                        radius: 12
-                        pad_all: 16
-                        border_width: 1
-                        border_color: 0x222222
-                        widgets:
-                          - label:
-                              align: TOP_LEFT
-                              text: "\U000F0079"
-                              text_font: mdi
-                              text_color: 0xFFFFFF
-                          - label:
-                              align: TOP_LEFT
-                              x: 28
-                              text: "Battery"
-                              text_font: roboto
-                              text_color: 0xFFFFFF
-                          - arc:
-                              id: battery_soc_arc
-                              width: 110
-                              height: 110
-                              align: LEFT_MID
-                              x: 10
-                              y: 10
-                              value: 0
-                              start_angle: 135
-                              end_angle: 225
-                              line_width: 8
-                              arc_color: 0x4CAF50
-                              bg_color: 0x222222
-                          - label:
-                              id: soc_percentage
-                              align: LEFT_MID
-                              x: 70
-                              y: 10
-                              text: "0%"
-                              text_font: roboto_big
-                              text_color: 0x4CAF50
-                          - label:
-                              id: battery_voltage
-                              align: LEFT_MID
-                              x: 170
-                              y: -20
-                              text: "0.0V"
-                              text_font: roboto
-                              text_color: 0xFFFFFF
-                          - label:
-                              id: battery_current
-                              align: LEFT_MID
-                              x: 170
-                              y: 0
-                              text: "0.0A"
-                              text_font: roboto
-                              text_color: 0xCCCCCC
-                          - label:
-                              id: battery_power
-                              align: LEFT_MID
-                              x: 170
-                              y: 20
-                              text: "0W"
-                              text_font: roboto
-                              text_color: 0xCCCCCC
-                          - label:
-                              id: battery_remaining
-                              align: RIGHT_MID
-                              x: -10
-                              y: -15
-                              text: "∞"
-                              text_font: roboto
-                              text_color: 0xCCCCCC
-                          - label:
-                              id: battery_capacity
-                              align: RIGHT_MID
-                              x: -10
-                              y: 15
-                              text: "0/150Ah"
-                              text_font: roboto_sm
-                              text_color: 0xCCCCCC
-#                    - obj:
-#                        id: battery_bms_reserve
-#                        width: 260
-#                        height: 70
-#                        bg_color: 0x0A0A0A
-#                        bg_opa: COVER
-#                        radius: 12
-#                        pad_all: 12
-#                        border_width: 1
-#                        border_color: 0x333333
-#                        widgets:
-#                          - label:
-#                              align: LEFT_MID
-#                              text: "BMS: — (rezerva pro budoucí data)"
-#                              text_font: roboto
-#                              text_color: 0xCCCCCC
+                    - label:
+                        align: TOP_LEFT
+                        text: "\U000F010B"
+                        text_font: mdi
+                        text_color: 0x2196F3
+                    - label:
+                        align: TOP_LEFT
+                        x: 28
+                        text: "DC/DC"
+                        text_font: roboto
+                        text_color: 0xFFFFFF
+                    - label:
+                        id: dcdc_output_power
+                        align: LEFT_MID
+                        y: -10
+                        text: "0W"
+                        text_font: roboto_big
+                        text_color: 0x2196F3
+                    - label:
+                        id: dcdc_output_current
+                        align: LEFT_MID
+                        y: 15
+                        text: "> 0.0A"
+                        text_font: roboto
+                        text_color: 0x4CAF50
+                    - label:
+                        id: dcdc_efficiency
+                        align: BOTTOM_RIGHT
+                        y: -6
+                        text: "0%"
+                        text_font: roboto_sm
+                        text_color: 0xCCCCCC
 
-              # PRAVÝ SLOUPEC: Zátěže (dva bloky, zatím data v horním)
-              - obj:
-                  id: loads_column
-                  scrollable: false
-                  width: 232
-                  height: 100%
-                  bg_opa: TRANSP
-                  border_width: 1
-                  border_color: 0xff00ff
+              # Střed: Battery
+              - obj: # battery_main_card
+                  id: battery_main
+                  x: 270
+                  y: 16
+                  width: 236
+                  height: 296
+                  bg_color: 0x111111
+                  bg_opa: COVER
+                  radius: 12
                   pad_all: 16
-                  layout:
-                    type: FLEX
-                    flex_flow: COLUMN
-                    
-                    pad_row: 0
-                    pad_column: 0
+                  scrollbar_mode: "OFF"
+                  scrollable: false
+                  border_width: 1
+                  border_color: 0xFF5722
                   widgets:
-                    - obj: # load_card
-                        id: load_card
-                        width: 100%
-                        height: 158
-                        bg_color: 0x0A0A0A
+                    - label:
+                        align: TOP_LEFT
+                        text: "\U000F0079"
+                        text_font: mdi
+                        text_color: 0xFF5722
+                    - label:
+                        align: TOP_LEFT
+                        x: 28
+                        text: "Battery"
+                        text_font: roboto
+                        text_color: 0xFFFFFF
+                    # Battery gauge (bar)
+                    - obj:
+                        id: battery_gauge_bg
+                        align: TOP_LEFT
+                        x: 0
+                        y: 36
+                        width: 204
+                        height: 44
+                        radius: 6
+                        bg_color: 0x222222
                         bg_opa: COVER
-                        radius: 8
-                        pad_all: 10
                         border_width: 1
-                        border_color: 0x9C27B0
-                        widgets:
-                          - label:
-                              align: TOP_LEFT
-                              text: "\U000F0425"
-                              text_font: mdi
-                              text_color: 0x9C27B0
-                          - label:
-                              align: TOP_LEFT
-                              x: 28
-                              text: "Loads"
-                              text_font: roboto
-                              text_color: 0xFFFFFF
-                          - label:
-                              id: load_power
-                              align: LEFT_MID
-                              y: -10
-                              text: "0W"
-                              text_font: roboto_big
-                              text_color: 0x9C27B0
-                          - label:
-                              id: load_current
-                              align: LEFT_MID
-                              y: 15
-                              text: "0.0A <"
-                              text_font: roboto
-                              text_color: 0xFF5722
-                          - label:
-                              id: load_daily
-                              align: BOTTOM_RIGHT
-                              y: -6
-                              text: "0.0kWh"
-                              text_font: roboto_sm
-                              text_color: 0xCCCCCC
-#                    - obj:
-#                        id: loads_future
-#                        width: 220
-#                        height: 158
-#                        align: BOTTOM_RIGHT
-#                        bg_color: 0x0A0A0A
-#                        bg_opa: COVER
-#                        radius: 8
-#                        pad_all: 10
-#                        border_width: 1
-#                        border_color: 0x333333
-#                        widgets:
-#                          - label:
-#                              align: CENTER
-#                              text: "Reserved"
-#                              text_font: roboto_sm
-#                              text_color: 0x777777
-              # OVERLAY s jednoduchými linkami (pevné souřadnice, doladíme později)
-#              - obj:
-#                  id: flows_overlay
-#                  width: 100%
-#                  height: 340
-#                  bg_opa: TRANSP
-#                  border_width: 0
-#                  widgets:
-#                    - line:
-#                        id: flow_solar_to_batt
-#                        line_width: 2
-#                        line_color: 0x444444
-#                        points:
-#                          - x: 220
-#                            y: 80
-#                          - x: 260
-#                            y: 80
-#                    - line:
-#                        id: flow_dcdc_to_batt
-#                        line_width: 2
-#                        line_color: 0x444444
-#                        points:
-#                          - x: 220
-#                            y: 250
-#                          - x: 260
-#                            y: 250
-#                    - line:
-#                        id: flow_batt_to_load
-#                        line_width: 2
-#                        line_color: 0x444444
-#                        points:
-#                          - x: 520
-#                            y: 170
-#                          - x: 560
-#                            y: 170
-        
-        # Navigace přidána přes packages (modulární)
+                        border_color: 0x333333
+                    - obj:
+                        id: battery_gauge_fill
+                        align: TOP_LEFT
+                        x: 0
+                        y: 36
+                        width: 0
+                        height: 44
+                        radius: 6
+                        bg_color: 0x4CAF50
+                        bg_opa: COVER
+                        border_width: 0
+                    - label:
+                        id: soc_percentage
+                        align: TOP_MID
+                        x: 0
+                        y: 48
+                        text: "0%"
+                        text_font: roboto_big
+                        text_color: 0xFFFFFF
+                    - label:
+                        id: battery_capacity
+                        align: TOP_MID
+                        x: 0
+                        y: 86
+                        text: "0/150Ah"
+                        text_font: roboto_sm
+                        text_color: 0xCCCCCC
+                    - label:
+                        id: battery_voltage
+                        align: BOTTOM_RIGHT
+                        x: -10
+                        y: -58
+                        text: "0.0V"
+                        text_font: roboto
+                        text_color: 0xFFFFFF
+                    - label:
+                        id: load_current
+                        align: BOTTOM_RIGHT
+                        x: -10
+                        y: -34
+                        text: "0.0A"
+                        text_font: roboto
+                        text_color: 0xCCCCCC
+                    - label:
+                        id: load_daily
+                        align: BOTTOM_RIGHT
+                        x: -10
+                        y: -10
+                        text: "0W"
+                        text_font: roboto
+                        text_color: 0xCCCCCC
+                    - label:
+                        id: battery_remaining
+                        align: BOTTOM_RIGHT
+                        x: -10
+                        y: -82
+                        text: "∞"
+                        text_font: roboto
+                        text_color: 0xCCCCCC
+
+              # Pravý: Loads
+              - obj: # load_card
+                  id: load_card
+                  x: 560
+                  y: 100
+                  width: 200
+                  height: 158
+                  bg_color: 0x0A0A0A
+                  bg_opa: COVER
+                  radius: 8
+                  pad_all: 10
+                  border_width: 1
+                  border_color: 0x9C27B0
+                  widgets:
+                    - label:
+                        align: TOP_LEFT
+                        text: "\U000F0425"
+                        text_font: mdi
+                        text_color: 0x9C27B0
+                    - label:
+                        align: TOP_LEFT
+                        x: 28
+                        text: "Loads"
+                        text_font: roboto
+                        text_color: 0xFFFFFF
+                    - label:
+                        id: battery_power
+                        align: LEFT_MID
+                        y: -10
+                        text: "0W"
+                        text_font: roboto_big
+                        text_color: 0x9C27B0
+                    - label:
+                        id: battery_current #  load_current
+                        align: LEFT_MID
+                        y: 15
+                        text: "0.0A <"
+                        text_font: roboto
+                        text_color: 0xFF5722
+                    - label:
+                        id: load_power # load_daily
+                        align: BOTTOM_RIGHT
+                        y: -6
+                        text: "0.0kWh"
+                        text_font: roboto_sm
+                        text_color: 0xCCCCCC
+
+              # Overlay s jednoduchými linkami (pevné souřadnice)
+              - obj:
+                  id: flows_overlay
+                  width: 100%
+                  height: 370
+                  y: 50
+                  x: 0
+                  bg_opa: TRANSP
+                  border_width: 0
+                  pad_all: 0
+                  widgets:
+                    - line:
+                        id: flow_solar_to_batt
+                        line_width: 2
+                        line_color: 0x444444
+                        points:
+                          - x: 216   # pravý okraj solar_card
+                            y: 95
+                          - x: 270   # levý okraj battery_main
+                            y: 95
+                    - line:
+                        id: flow_dcdc_to_batt
+                        line_width: 2
+                        line_color: 0x444444
+                        points:
+                          - x: 216
+                            y: 168
+                          - x: 270
+                            y: 168
+                    - line:
+                        id: flow_batt_to_load
+                        line_width: 2
+                        line_color: 0x444444
+                        points:
+                          - x: 506   # pravý okraj battery_main
+                            y: 168
+                          - x: 560   # levý okraj load_card
+                            y: 168
+                  # Koncové bambulky (cílové uzly)
+                    - obj:
+                        id: dot_solar_batt
+                        x: 266
+                        y: 91
+                        width: 8
+                        height: 8
+                        radius: 4
+                        bg_color: 0x444444
+                        bg_opa: COVER
+                        border_width: 0
+                    - obj:
+                        id: dot_dcdc_batt
+                        x: 266
+                        y: 164
+                        width: 8
+                        height: 8
+                        radius: 4
+                        bg_color: 0x444444
+                        bg_opa: COVER
+                        border_width: 0
+                    - obj:
+                        id: dot_batt_load
+                        x: 556
+                        y: 164
+                        width: 8
+                        height: 8
+                        radius: 4
+                        bg_color: 0x444444
+                        bg_opa: COVER
+                        border_width: 0
+
+# =============================================================================
+# Navigace přidána přes packages (modulární)
+# =============================================================================
+
 
 # Modulární include headeru (rozšiřuje stránku pomocí !extend)
 packages:

@@ -113,11 +113,19 @@ script:
 
   - id: update_battery_data
     then:
-      - lvgl.arc.update:
-          id: battery_soc_arc
-          value: !lambda |-
+      # Battery gauge fill width and color
+      - lvgl.widget.update:
+          id: battery_gauge_fill
+          width: !lambda |-
             float soc = id(shunt_soc).has_state() ? id(shunt_soc).state : 0;
-            return (int)soc;
+            /* bg width = 204, padding none */
+            int w = (int)(fmaxf(0.0f, fminf(soc, 100.0f)) * 204.0f / 100.0f);
+            return w;
+          bg_color: !lambda |-
+            float soc = id(shunt_soc).has_state() ? id(shunt_soc).state : 0;
+            if (soc > 50) return lv_color_hex(0x4CAF50);
+            else if (soc > 20) return lv_color_hex(0xFF9800);
+            else return lv_color_hex(0xF44336);
       - lvgl.label.update:
           id: soc_percentage
           text: !lambda |-
@@ -125,11 +133,7 @@ script:
             static char soc_buf[8];
             snprintf(soc_buf, sizeof(soc_buf), "%.0f%%", soc);
             return soc_buf;
-          text_color: !lambda |-
-            float soc = id(shunt_soc).has_state() ? id(shunt_soc).state : 0;
-            if (soc > 50) return lv_color_hex(0x4CAF50);
-            else if (soc > 20) return lv_color_hex(0xFF9800);
-            else return lv_color_hex(0xF44336);
+          text_color: 0xFFFFFF
       - lvgl.label.update:
           id: battery_voltage
           text: !lambda |-
@@ -267,35 +271,61 @@ script:
             snprintf(buf, sizeof(buf), "%.1fkWh", daily_estimate);
             return buf;
 
-#  - id: update_flows
-#    then:
-#      - lvgl.widget.update:
-#          id: flow_solar_to_batt
-#          line_color: !lambda |-
-#            float pv = id(mppt_pv_power).has_state() ? id(mppt_pv_power).state : 0.0f;
-#            return lv_color_hex(0x4CAF50);
-#          line_width: !lambda |-
-#            float pv = id(mppt_pv_power).has_state() ? id(mppt_pv_power).state : 0.0f;
-#            int w = 2 + (int) fminf(fabsf(pv) / 100.0f, 6.0f);
-#            return w;
-#      - lvgl.widget.update:
-#          id: flow_dcdc_to_batt
-#          line_color: !lambda |-
-#            float w = id(xs_output_power).has_state() ? id(xs_output_power).state : 0.0f;
-#            return lv_color_hex(0x4CAF50);
-#          line_width: !lambda |-
-#            float w = id(xs_output_power).has_state() ? id(xs_output_power).state : 0.0f;
-#            int lw = 2 + (int) fminf(fabsf(w) / 100.0f, 6.0f);
-#            return lw;
-#      - lvgl.widget.update:
-#          id: flow_batt_to_load
-#          line_color: !lambda |-
-#            float w = id(mppt_load_power).has_state() ? id(mppt_load_power).state : 0.0f;
-#            return lv_color_hex(0xFF5722);
-#          line_width: !lambda |-
-#            float w = id(mppt_load_power).has_state() ? id(mppt_load_power).state : 0.0f;
-#            int lw = 2 + (int) fminf(fabsf(w) / 100.0f, 6.0f);
-#            return lw;
+  - id: update_flows
+    then:
+      # Solar -> Battery
+      - lvgl.widget.update:
+          id: flow_solar_to_batt
+          line_color: !lambda |-
+            float pv = id(mppt_pv_power).has_state() ? id(mppt_pv_power).state : 0.0f;
+            if (pv <= 1.0f) return lv_color_hex(0x666666);
+            return lv_color_hex(0x4CAF50);
+          line_width: !lambda |-
+            float pv = id(mppt_pv_power).has_state() ? id(mppt_pv_power).state : 0.0f;
+            int w = 2 + (int) fminf(fabsf(pv) / 100.0f, 8.0f);
+            return w;
+      - lvgl.widget.update:
+          id: dot_solar_batt
+          bg_color: !lambda |-
+            float pv = id(mppt_pv_power).has_state() ? id(mppt_pv_power).state : 0.0f;
+            if (pv <= 1.0f) return lv_color_hex(0x666666);
+            return lv_color_hex(0x4CAF50);
+
+      # DCDC -> Battery
+      - lvgl.widget.update:
+          id: flow_dcdc_to_batt
+          line_color: !lambda |-
+            float w = id(xs_output_power).has_state() ? id(xs_output_power).state : 0.0f;
+            if (fabsf(w) <= 1.0f) return lv_color_hex(0x666666);
+            return w >= 0 ? lv_color_hex(0x4CAF50) : lv_color_hex(0xFF5722);
+          line_width: !lambda |-
+            float w = id(xs_output_power).has_state() ? id(xs_output_power).state : 0.0f;
+            int lw = 2 + (int) fminf(fabsf(w) / 100.0f, 8.0f);
+            return lw;
+      - lvgl.widget.update:
+          id: dot_dcdc_batt
+          bg_color: !lambda |-
+            float w = id(xs_output_power).has_state() ? id(xs_output_power).state : 0.0f;
+            if (fabsf(w) <= 1.0f) return lv_color_hex(0x666666);
+            return w >= 0 ? lv_color_hex(0x4CAF50) : lv_color_hex(0xFF5722);
+
+      # Battery -> Load (zatím dle SmartShunt: kladné = nabíjení, záporné = vybíjení)
+      - lvgl.widget.update:
+          id: flow_batt_to_load
+          line_color: !lambda |-
+            float a = id(shunt_battery_current).has_state() ? id(shunt_battery_current).state : 0.0f;
+            if (fabsf(a) <= 0.1f) return lv_color_hex(0x666666);
+            return a < -0.1f ? lv_color_hex(0xFF5722) : lv_color_hex(0x4CAF50);
+          line_width: !lambda |-
+            float a = id(shunt_battery_current).has_state() ? id(shunt_battery_current).state : 0.0f;
+            int lw = 2 + (int) fminf(fabsf(a) / 5.0f, 8.0f);
+            return lw;
+      - lvgl.widget.update:
+          id: dot_batt_load
+          bg_color: !lambda |-
+            float a = id(shunt_battery_current).has_state() ? id(shunt_battery_current).state : 0.0f;
+            if (fabsf(a) <= 0.1f) return lv_color_hex(0x666666);
+            return a < -0.1f ? lv_color_hex(0xFF5722) : lv_color_hex(0x4CAF50);
 
   - id: update_main_dashboard
     then:
@@ -304,7 +334,7 @@ script:
       - script.execute: update_solar_data
       - script.execute: update_dcdc_data
       - script.execute: update_load_data
- #     - script.execute: update_flows
+      - script.execute: update_flows
       # Wake display if LVGL paused (optional UX tweak)
       # - if:
       #     condition: lvgl.is_paused
