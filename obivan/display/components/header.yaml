@@ -1,0 +1,79 @@
+# =============================================================================
+# Modular Header Component (extends a page)
+# Usage via packages with vars:
+#   header: !include { file: ../components/header.yaml, vars: { page_id: ${page_id}, prefix: ${prefix} } }
+# Where prefix can be "", "mppt_", "dcdc_", "system_" to keep IDs unikátní a kompatibilní se skripty.
+# =============================================================================
+
+lvgl:
+  pages:
+    - id: !extend ${page_id}
+      widgets:
+        - obj:
+            id: ${prefix}header_container
+            width: 100%
+            height: 50
+            y: 0
+            bg_color: "${header_bg_color}"
+            border_width: 1
+            border_color: "${header_border_color}"
+            border_side: BOTTOM
+            scrollbar_mode: "OFF"
+            widgets:
+              - label:
+                  id: ${prefix}header_time
+                  align: LEFT_MID
+                  x: 12
+                  text: "12:34"
+                  text_font: roboto
+                  text_color: "${header_time_color}"
+              - label:
+                  id: ${prefix}wifi_status
+                  align: LEFT_MID
+                  x: 100
+                  text: "\U000F05A9"
+                  text_font: mdi
+                  text_color: "${icon_color_on}"
+              - obj:
+                  id: ${prefix}device_status_container
+                  align: CENTER
+                  width: 220
+                  height: 40
+                  bg_opa: TRANSP
+                  border_width: 0
+                  scrollbar_mode: "OFF"
+                  widgets:
+                    - label:
+                        id: ${prefix}status_shunt
+                        align: LEFT_MID
+                   #     x: -40
+                        text: "\U000F0080"
+                        text_font: mdi
+                        text_color: "${icon_color_off}"
+                    - label:
+                        id: ${prefix}status_mppt
+                        align: CENTER
+                        text: "\U000F1A74"
+                        text_font: mdi
+                        text_color: "${icon_color_off}"
+                    - label:
+                        id: ${prefix}status_orion
+                        align: RIGHT_MID
+                    #    x: 40
+                        text: "\U000F010B"
+                        text_font: mdi
+                        text_color: "${icon_color_off}"
+              - label:
+                  id: ${prefix}system_status
+                  align: RIGHT_MID
+                  x: -80
+                  text: "\U000F0238"
+                  text_font: mdi
+                  text_color: "${accent_blue}"
+              - label:
+                  id: ${prefix}header_date
+                  align: RIGHT_MID  
+                  x: -12
+                  text: "01.12"
+                  text_font: roboto
+                  text_color: "${header_date_color}"

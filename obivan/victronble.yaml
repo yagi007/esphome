@@ -1,0 +1,272 @@
+
+external_components:
+  - source: github://Fabian-Schmidt/esphome-victron_ble
+
+esp32_ble_tracker:
+  scan_parameters:
+    # === OPTIMALIZACE PRO DEEP SLEEP A KOORDINACI ===
+    interval: 3000ms        # Delší interval = méně CPU/RAM usage
+    window: 600ms           # Kratší window = úspora energie  
+    active: false           # Passive scan = významná úspora energie
+#  duration: 30s          # Scan jen 30s po probuzení
+    # Po scan_duration se BLE vypne automaticky = úspora RAM
+  on_scan_end:
+    then:
+      - logger.log: "BLE scan dokončen, spouštím koordinovanou sekvenci..."
+      - delay: 5s
+      # Místo přímého display update spustíme koordinovaný script
+#      - script.execute: coordinated_sleep_cycle
+
+
+
+#bluetooth_proxy:
+#  active: true
+#  connection_slots: 3
+
+victron_ble:
+  - id: MySmartShunt
+    mac_address: "dc:61:47:b0:3a:7c"    # PLACEHOLDER - nahradit skutečnou MAC adresou
+    bindkey: "58a7a9dbc1735bb6578f6284f8982122"  # PLACEHOLDER - nahradit skutečným bindkey
+  - id: MyOrionXS
+    mac_address: "C4:65:3B:FE:E1:D3"    
+    bindkey: "72bb827c1da9cbc0b4fa1622fceaad08"
+  - id: MySmartSolar
+    mac_address: "EC:54:E2:A1:52:FD"
+    bindkey: "d3e76da2965988e2edff050ffca2ea1d"
+
+sensor:
+  # === MySmartShunt (Battery Monitor) ===
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Battery Voltage"
+    type: BATTERY_VOLTAGE
+    id: shunt_battery_voltage
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Battery Current"
+    type: BATTERY_CURRENT
+    id: shunt_battery_current
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Battery Power"
+    type: BATTERY_POWER
+    id: shunt_battery_power
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt State of Charge"
+    type: STATE_OF_CHARGE
+    id: shunt_soc
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Consumed Ah"
+    type: CONSUMED_AH
+    id: shunt_consumed_ah
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Time to Go"
+    type: TIME_TO_GO
+    id: shunt_time_to_go
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt AUX Voltage"
+    type: AUX_VOLTAGE
+    id: shunt_aux_voltage
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Temperature"
+    type: TEMPERATURE
+    id: shunt_temperature
+
+  # === MySmartSolar (MPPT Solar Charger) ===
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Battery Voltage"
+    id: mppt_battery_voltage
+    type: BATTERY_VOLTAGE
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Battery Current"
+    id: mppt_battery_current
+    type: BATTERY_CURRENT
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Battery Power"
+    id: mppt_battery_power
+    type: BATTERY_POWER
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT PV Power"
+    id: mppt_pv_power
+    type: PV_POWER
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Yield Today"
+    id: mppt_yield_today
+    type: YIELD_TODAY
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Load Current"
+    type: LOAD_CURRENT
+    id: mppt_load_current
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Load Power"
+    type: LOAD_POWER
+    id: mppt_load_power
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT State of Charge"
+    type: STATE_OF_CHARGE
+    id: mppt_soc
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Temperature"
+    type: TEMPERATURE
+    id: mppt_temperature
+
+  # === MyOrionXS (DC/DC Converter) ===
+  - platform: victron_ble
+    victron_ble_id: MyOrionXS
+    name: "XS Input Voltage"
+    type: INPUT_VOLTAGE
+    id: xs_input_voltage
+  - platform: victron_ble
+    victron_ble_id: MyOrionXS
+    name: "XS Input Current"
+    type: INPUT_CURRENT
+    id: xs_input_current
+  - platform: victron_ble
+    victron_ble_id: MyOrionXS
+    name: "XS Input Power"
+    type: INPUT_POWER
+    id: xs_input_power
+  - platform: victron_ble
+    victron_ble_id: MyOrionXS
+    name: "XS Output Voltage"
+    id: xs_output_voltage
+    type: OUTPUT_VOLTAGE
+  - platform: victron_ble
+    victron_ble_id: MyOrionXS
+    name: "XS Output Current"
+    type: OUTPUT_CURRENT        
+    id: xs_output_current
+  - platform: victron_ble
+    victron_ble_id: MyOrionXS
+    name: "XS Output Power"
+    type: OUTPUT_POWER
+    id: xs_output_power
+
+binary_sensor:
+  # === MySmartShunt (Battery Monitor) ===
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Alarm"
+    type: ALARM
+    id: shunt_alarm
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Charger Error"
+    type: CHARGER_ERROR
+    id: shunt_charger_error
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Device Off"
+    type: DEVICE_STATE_OFF
+    id: shunt_device_off
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Device Fault"
+    type: DEVICE_STATE_FAULT
+    id: shunt_device_fault
+
+  # === MySmartSolar (MPPT Solar Charger) ===
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Alarm"
+    type: ALARM
+    id: mppt_alarm
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Charger Error"
+    id: mppt_charger_error
+    type: CHARGER_ERROR
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Device Off"
+    type: DEVICE_STATE_OFF
+    id: mppt_device_off
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Device Fault"
+    type: DEVICE_STATE_FAULT
+    id: mppt_device_fault
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Bulk Charging"
+    type: DEVICE_STATE_BULK
+    id: mppt_bulk_charging
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Absorption"
+    type: DEVICE_STATE_ABSORPTION
+    id: mppt_absorption
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Float"
+    type: DEVICE_STATE_FLOAT
+    id: mppt_float
+
+  # === MyOrionXS (DC/DC Converter) ===
+  - platform: victron_ble
+    victron_ble_id: MyOrionXS
+    name: "XS Charger Error"
+    id: xs_charger_error
+    type: CHARGER_ERROR    
+
+
+text_sensor:
+  # === MySmartShunt (Battery Monitor) ===
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Device State"
+    type: DEVICE_STATE
+    id: shunt_device_state
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Alarm Reason"
+    type: ALARM_REASON
+    id: shunt_alarm_reason
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Charger Error Text"
+    type: CHARGER_ERROR
+    id: shunt_charger_error_text
+
+  # === MySmartSolar (MPPT Solar Charger) ===
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Device State"
+    type: DEVICE_STATE
+    id: mppt_device_state
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Alarm Reason"
+    type: ALARM_REASON
+    id: mppt_alarm_reason
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Charger Error Text"
+    type: CHARGER_ERROR
+    id: mppt_charger_error_text
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Off Reason"
+    type: OFF_REASON
+    id: mppt_off_reason
+
+  # === MyOrionXS (DC/DC Converter) ===
+  - platform: victron_ble
+    victron_ble_id: MyOrionXS
+    name: "XS Charger Error Text"
+    id: xs_charger_error_text
+    type: CHARGER_ERROR    

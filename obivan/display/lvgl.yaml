@@ -1,0 +1,312 @@
+# =============================================================================
+# LVGL GUI Configuration for Victron Energy Monitoring
+# Based on bennydiamond/esphome_lvgl_hmi_garage structure
+# Optimized for caravan/motorhome offline operation
+# Resolution: 800x480 (7" touch display)
+# =============================================================================
+font: !include fonts.yaml
+
+# Packages pro modulární stránky - podle bennydiamond struktury
+packages:
+  page_overview: !include pages/overview.yaml
+  page_mppt: !include pages/mppt.yaml
+  page_dcdc: !include pages/dcdc.yaml
+  page_system: !include pages/system.yaml
+
+# Časovač pro aktualizace (šetrný s baterií)
+interval:
+  - interval: 30s  # Častější aktualizace pro responzivní UI
+    then:
+      - script.execute: update_main_dashboard
+      
+  - interval: 60s  # Méně časté aktualizace data náročných operací
+    then:
+      - script.execute: update_datetime
+
+
+# Scripts pro aktualizace dat
+script:
+  - id: update_datetime
+    then:
+      # Hlavní header (ostatní stránky zdědí přes modulární komponentu se svými IDs)
+      - lvgl.label.update:
+          id: header_time
+          text: !lambda |-
+            auto now = id(sntp_time).now();            
+            static char time_buf[16];
+            snprintf(time_buf, sizeof(time_buf), "%02d:%02d", now.hour, now.minute);
+            return time_buf;
+      - lvgl.label.update:
+          id: header_date
+          text: !lambda |-
+            auto now = id(sntp_time).now();
+            static char date_buf[16];
+            snprintf(date_buf, sizeof(date_buf), "%02d.%02d", now.day_of_month, now.month);
+            return date_buf;
+
+  - id: update_device_status
+    then:
+      # Overview page
+      - lvgl.label.update:
+          id: status_shunt
+          text_color: !lambda |-
+            bool connected = id(shunt_battery_voltage).has_state() && !isnan(id(shunt_battery_voltage).state);
+            return connected ? lv_color_hex(${icon_color_on}) : lv_color_hex(${icon_color_off});
+      - lvgl.label.update:
+          id: status_mppt
+          text_color: !lambda |-
+            bool connected = id(mppt_battery_voltage).has_state() && !isnan(id(mppt_battery_voltage).state);
+            return connected ? lv_color_hex(${icon_color_on}) : lv_color_hex(${icon_color_off});
+      - lvgl.label.update:
+          id: status_orion
+          text_color: !lambda |-
+            bool connected = id(xs_input_voltage).has_state() && !isnan(id(xs_input_voltage).state);
+            return connected ? lv_color_hex(${icon_color_on}) : lv_color_hex(${icon_color_off});
+      # MPPT page
+      - lvgl.label.update:
+          id: mppt_status_shunt
+          text_color: !lambda |-
+            bool connected = id(shunt_battery_voltage).has_state() && !isnan(id(shunt_battery_voltage).state);
+            return connected ? lv_color_hex(${icon_color_on}) : lv_color_hex(${icon_color_off});
+      - lvgl.label.update:
+          id: mppt_status_mppt
+          text_color: !lambda |-
+            bool connected = id(mppt_battery_voltage).has_state() && !isnan(id(mppt_battery_voltage).state);
+            return connected ? lv_color_hex(${icon_color_on}) : lv_color_hex(${icon_color_off});
+      - lvgl.label.update:
+          id: mppt_status_orion
+          text_color: !lambda |-
+            bool connected = id(xs_input_voltage).has_state() && !isnan(id(xs_input_voltage).state);
+            return connected ? lv_color_hex(${icon_color_on}) : lv_color_hex(${icon_color_off});
+      # DC/DC page
+      - lvgl.label.update:
+          id: dcdc_status_shunt
+          text_color: !lambda |-
+            bool connected = id(shunt_battery_voltage).has_state() && !isnan(id(shunt_battery_voltage).state);
+            return connected ? lv_color_hex(${icon_color_on}) : lv_color_hex(${icon_color_off});
+      - lvgl.label.update:
+          id: dcdc_status_mppt
+          text_color: !lambda |-
+            bool connected = id(mppt_battery_voltage).has_state() && !isnan(id(mppt_battery_voltage).state);
+            return connected ? lv_color_hex(${icon_color_on}) : lv_color_hex(${icon_color_off});
+      - lvgl.label.update:
+          id: dcdc_status_orion
+          text_color: !lambda |-
+            bool connected = id(xs_input_voltage).has_state() && !isnan(id(xs_input_voltage).state);
+            return connected ? lv_color_hex(${icon_color_on}) : lv_color_hex(${icon_color_off});
+      # System page
+      - lvgl.label.update:
+          id: system_status_shunt
+          text_color: !lambda |-
+            bool connected = id(shunt_battery_voltage).has_state() && !isnan(id(shunt_battery_voltage).state);
+            return connected ? lv_color_hex(${icon_color_on}) : lv_color_hex(${icon_color_off});
+      - lvgl.label.update:
+          id: system_status_mppt
+          text_color: !lambda |-
+            bool connected = id(mppt_battery_voltage).has_state() && !isnan(id(mppt_battery_voltage).state);
+            return connected ? lv_color_hex(${icon_color_on}) : lv_color_hex(${icon_color_off});
+      - lvgl.label.update:
+          id: system_status_orion
+          text_color: !lambda |-
+            bool connected = id(xs_input_voltage).has_state() && !isnan(id(xs_input_voltage).state);
+            return connected ? lv_color_hex(${icon_color_on}) : lv_color_hex(${icon_color_off});
+
+  - id: update_battery_data
+    then:
+      - lvgl.arc.update:
+          id: battery_soc_arc
+          value: !lambda |-
+            float soc = id(shunt_soc).has_state() ? id(shunt_soc).state : 0;
+            return (int)soc;
+      - lvgl.label.update:
+          id: soc_percentage
+          text: !lambda |-
+            float soc = id(shunt_soc).has_state() ? id(shunt_soc).state : 0;
+            static char soc_buf[8];
+            snprintf(soc_buf, sizeof(soc_buf), "%.0f%%", soc);
+            return soc_buf;
+          text_color: !lambda |-
+            float soc = id(shunt_soc).has_state() ? id(shunt_soc).state : 0;
+            if (soc > 50) return lv_color_hex(0x4CAF50);
+            else if (soc > 20) return lv_color_hex(0xFF9800);
+            else return lv_color_hex(0xF44336);
+      - lvgl.label.update:
+          id: battery_voltage
+          text: !lambda |-
+            float v = id(shunt_battery_voltage).has_state() ? id(shunt_battery_voltage).state : 0.0;
+            static char buf[16];
+            if (v >= 100) snprintf(buf, sizeof(buf), "%.0fV", v);
+            else snprintf(buf, sizeof(buf), "%.1fV", v);
+            return buf;
+      - lvgl.label.update:
+          id: battery_current
+          text: !lambda |-
+            float a = id(shunt_battery_current).has_state() ? id(shunt_battery_current).state : 0.0;
+            static char buf[16];
+            if (fabs(a) >= 100) snprintf(buf, sizeof(buf), "%.0fA", a);
+            else snprintf(buf, sizeof(buf), "%.1fA", a);
+            return buf;
+          text_color: !lambda |-
+            float current = id(shunt_battery_current).has_state() ? id(shunt_battery_current).state : 0;
+            if (current > 0.1) return lv_color_hex(0x4CAF50);
+            else if (current < -0.1) return lv_color_hex(0xFF5722);
+            else return lv_color_hex(0xCCCCCC);
+      - lvgl.label.update:
+          id: battery_power
+          text: !lambda |-
+            float w = id(shunt_battery_power).has_state() ? id(shunt_battery_power).state : 0.0;
+            static char buf[16];
+            if (fabs(w) >= 1000) snprintf(buf, sizeof(buf), "%.1fkW", w/1000);
+            else snprintf(buf, sizeof(buf), "%.0fW", w);
+            return buf;
+          text_color: !lambda |-
+            float power = id(shunt_battery_power).has_state() ? id(shunt_battery_power).state : 0;
+            if (power > 1) return lv_color_hex(0x4CAF50);
+            else if (power < -1) return lv_color_hex(0xFF5722);
+            else return lv_color_hex(0xCCCCCC);
+      - lvgl.label.update:
+          id: battery_remaining
+          text: !lambda |-
+            float ttg = id(shunt_time_to_go).has_state() ? id(shunt_time_to_go).state : 0;
+            static char ttg_buf[16];
+            if (ttg >= 1440) {
+              snprintf(ttg_buf, sizeof(ttg_buf), "%.0fd", ttg/1440);
+            } else if (ttg >= 60) {
+              snprintf(ttg_buf, sizeof(ttg_buf), "%.1fh", ttg/60);
+            } else if (ttg > 0) {
+              snprintf(ttg_buf, sizeof(ttg_buf), "%.0fmin", ttg);
+            } else {
+              snprintf(ttg_buf, sizeof(ttg_buf), "∞");
+            }
+            return ttg_buf;
+      - lvgl.label.update:
+          id: battery_capacity
+          text: !lambda |-
+            const float BATTERY_NOMINAL = 150.0;
+            float consumed = id(shunt_consumed_ah).has_state() ? id(shunt_consumed_ah).state : 0;
+            float remaining = BATTERY_NOMINAL - consumed;
+            static char cap_buf[16];
+            snprintf(cap_buf, sizeof(cap_buf), "%.0f/%.0fAh", remaining, BATTERY_NOMINAL);
+            return cap_buf;
+
+  - id: update_solar_data
+    then:
+      - lvgl.label.update:
+          id: solar_pv_power
+          text: !lambda |-
+            float pv = id(mppt_pv_power).has_state() ? id(mppt_pv_power).state : 0.0;
+            static char buf[16];
+            if (pv >= 1000) snprintf(buf, sizeof(buf), "%.1fkW", pv/1000);
+            else snprintf(buf, sizeof(buf), "%.0fW", pv);
+            return buf;
+      - lvgl.label.update:
+          id: solar_battery_current
+          text: !lambda |-
+            float a = id(mppt_battery_current).has_state() ? id(mppt_battery_current).state : 0.0;
+            static char buf[16];
+            snprintf(buf, sizeof(buf), "> %.1fA", a);
+            return buf;
+      - lvgl.label.update:
+          id: solar_yield_today
+          text: !lambda |-
+            float y = id(mppt_yield_today).has_state() ? id(mppt_yield_today).state : 0.0;
+            static char buf[16];
+            snprintf(buf, sizeof(buf), "%.1fkWh", y);
+            return buf;
+
+  - id: update_dcdc_data
+    then:
+      - lvgl.label.update:
+          id: dcdc_output_power
+          text: !lambda |-
+            float w = id(xs_output_power).has_state() ? id(xs_output_power).state : 0.0;
+            static char buf[16];
+            if (w >= 1000) snprintf(buf, sizeof(buf), "%.1fkW", w/1000);
+            else snprintf(buf, sizeof(buf), "%.0fW", w);
+            return buf;
+      - lvgl.label.update:
+          id: dcdc_output_current
+          text: !lambda |-
+            float a = id(xs_output_current).has_state() ? id(xs_output_current).state : 0.0;
+            static char buf[16];
+            snprintf(buf, sizeof(buf), "> %.1fA", a);
+            return buf;
+      - lvgl.label.update:
+          id: dcdc_efficiency
+          text: !lambda |-
+            float in_power = id(xs_input_power).has_state() ? id(xs_input_power).state : 0.0;
+            float out_power = id(xs_output_power).has_state() ? id(xs_output_power).state : 0.0;
+            float efficiency = (in_power > 0) ? (out_power / in_power * 100) : 0;
+            static char buf[8];
+            snprintf(buf, sizeof(buf), "%.0f%%", efficiency);
+            return buf;
+
+  - id: update_load_data
+    then:
+      - lvgl.label.update:
+          id: load_power
+          text: !lambda |-
+            float w = id(mppt_load_power).has_state() ? id(mppt_load_power).state : 0.0;
+            static char buf[16];
+            if (w >= 1000) snprintf(buf, sizeof(buf), "%.1fkW", w/1000);
+            else snprintf(buf, sizeof(buf), "%.0fW", w);
+            return buf;
+      - lvgl.label.update:
+          id: load_current
+          text: !lambda |-
+            float a = id(mppt_load_current).has_state() ? id(mppt_load_current).state : 0.0;
+            static char buf[16];
+            snprintf(buf, sizeof(buf), "%.1fA <", a);
+            return buf;
+      - lvgl.label.update:
+          id: load_daily
+          text: !lambda |-
+            float w = id(mppt_load_power).has_state() ? id(mppt_load_power).state : 0.0;
+            float daily_estimate = (w * 24) / 1000.0;
+            static char buf[16];
+            snprintf(buf, sizeof(buf), "%.1fkWh", daily_estimate);
+            return buf;
+
+#  - id: update_flows
+#    then:
+#      - lvgl.widget.update:
+#          id: flow_solar_to_batt
+#          line_color: !lambda |-
+#            float pv = id(mppt_pv_power).has_state() ? id(mppt_pv_power).state : 0.0f;
+#            return lv_color_hex(0x4CAF50);
+#          line_width: !lambda |-
+#            float pv = id(mppt_pv_power).has_state() ? id(mppt_pv_power).state : 0.0f;
+#            int w = 2 + (int) fminf(fabsf(pv) / 100.0f, 6.0f);
+#            return w;
+#      - lvgl.widget.update:
+#          id: flow_dcdc_to_batt
+#          line_color: !lambda |-
+#            float w = id(xs_output_power).has_state() ? id(xs_output_power).state : 0.0f;
+#            return lv_color_hex(0x4CAF50);
+#          line_width: !lambda |-
+#            float w = id(xs_output_power).has_state() ? id(xs_output_power).state : 0.0f;
+#            int lw = 2 + (int) fminf(fabsf(w) / 100.0f, 6.0f);
+#            return lw;
+#      - lvgl.widget.update:
+#          id: flow_batt_to_load
+#          line_color: !lambda |-
+#            float w = id(mppt_load_power).has_state() ? id(mppt_load_power).state : 0.0f;
+#            return lv_color_hex(0xFF5722);
+#          line_width: !lambda |-
+#            float w = id(mppt_load_power).has_state() ? id(mppt_load_power).state : 0.0f;
+#            int lw = 2 + (int) fminf(fabsf(w) / 100.0f, 6.0f);
+#            return lw;
+
+  - id: update_main_dashboard
+    then:
+      - script.execute: update_device_status
+      - script.execute: update_battery_data
+      - script.execute: update_solar_data
+      - script.execute: update_dcdc_data
+      - script.execute: update_load_data
+ #     - script.execute: update_flows
+      # Wake display if LVGL paused (optional UX tweak)
+      # - if:
+      #     condition: lvgl.is_paused
+      #     then:
+      #       - lvgl.resume:

@@ -1,0 +1,157 @@
+# =============================================================================
+# Modular Navigation Component (extends a page)
+# Usage via packages with vars:
+#   navigation: !include { file: ../components/navigation.yaml, vars: { page_id: ${page_id}, prefix: ${prefix},
+#       overview_bg: 0x111111, overview_text: 0xCCCCCC,
+#       mppt_bg: 0x111111, mppt_text: 0xCCCCCC,
+#       dcdc_bg: 0x111111, dcdc_text: 0xCCCCCC,
+#       system_bg: 0x111111, system_text: 0xCCCCCC } }
+# =============================================================================
+
+lvgl:
+  pages:
+    - id: !extend ${page_id}
+      widgets:
+        - obj:
+            id: ${prefix}navigation_container
+            width: 100%
+            height: 60
+            y: 420
+            bg_color: 0x000000
+            border_width: 0
+            border_color: 0x333333
+            border_side: TOP
+            scrollbar_mode: "OFF"
+            scrollable: false
+            widgets:
+              # Nav buttons aligned from left
+              - button:
+                  id: ${prefix}nav_overview
+                  width: 120
+                  height: 45
+                  align: LEFT_MID
+                  x: 130
+                  bg_color: ${overview_bg}
+                  bg_opa: COVER
+                  radius: 8
+                  on_press:
+                    - lvgl.page.show: page_overview
+                  widgets:
+                    - label:
+                        align: CENTER
+                        text: "\U000F02DC"  # mdi-home
+                        text_font: mdi
+                        text_color: ${overview_text}
+              - button:
+                  id: ${prefix}nav_mppt
+                  width: 120
+                  height: 45
+                  align: LEFT_MID
+                  x: 260
+                  bg_color: ${mppt_bg}
+                  bg_opa: COVER
+                  radius: 8
+                  on_press:
+                    - lvgl.page.show: page_mppt
+                  widgets:
+                    - label:
+                        align: CENTER
+                        text: "MPPT"
+                        text_font: roboto
+                        text_color: ${mppt_text}
+              - button:
+                  id: ${prefix}nav_dcdc
+                  width: 120
+                  height: 45
+                  align: LEFT_MID
+                  x: 390
+                  bg_color: ${dcdc_bg}
+                  bg_opa: COVER
+                  radius: 8
+                  on_press:
+                    - lvgl.page.show: page_dcdc
+                  widgets:
+                    - label:
+                        align: CENTER
+                        text: "DC/DC"
+                        text_font: roboto
+                        text_color: ${dcdc_text}
+              - button:
+                  id: ${prefix}nav_system
+                  width: 120
+                  height: 45
+                  align: LEFT_MID
+                  x: 520
+                  bg_color: ${system_bg}
+                  bg_opa: COVER
+                  radius: 8
+                  on_press:
+                    - lvgl.page.show: page_system
+                  widgets:
+                    - label:
+                        align: CENTER
+                        text: "SYSTEM"
+                        text_font: roboto
+                        text_color: ${system_text}
+
+              # Right side utility icons container
+              - obj:
+                  id: ${prefix}nav_utils
+                  width: 120
+                  height: 45
+                  align: RIGHT_MID
+                  x: -8
+                  bg_opa: TRANSP
+                  border_width: 0
+                  scrollbar_mode: "OFF"
+                  scrollable: false
+                  pad_all: 0
+                  widgets:
+                    - button: # dislay OFF
+                        id: ${prefix}nav_display_off
+                        width: 48
+                        height: 45
+                        align: RIGHT_MID
+                        x: 0
+                        bg_opa: TRANSP
+                        radius: 8
+                        on_press:
+                          - lvgl.pause:
+                          - switch.turn_off: lcdbacklight
+                          - delay: 500ms
+                        widgets:
+                          - label:
+                              align: CENTER
+                              text: "\U000F0594"
+                              text_font: mdi
+                              text_color: ${overview_text}
+                    - button: # sleep
+                        id: ${prefix}nav_power_sleep
+                        width: 48
+                        height: 45
+                        align: RIGHT_MID
+                        x: -56
+                        bg_opa: TRANSP
+                        radius: 8
+                        on_press:
+                          - globals.set:
+                              id: manual_display_off
+                              value: 'true'                        
+                          - switch.turn_off: lcdbacklight
+                          - delay: 200ms
+                          - deep_sleep.enter: deep_sleep_ctrl
+                        widgets:
+                          - label:
+                              align: CENTER
+                              text: "\U000F0425"
+                              text_font: mdi
+                              text_color: ${overview_text}
+
+# =============================================================================
+# NAVIGATION COMPONENT - Moderní tab menu s navigací
+# Inspirováno bennydiamond/esphome_lvgl_hmi_garage
+# Obsahuje: 4 tlačítka pro přepínání stránek (Overview, MPPT, DC/DC, System)
+# =============================================================================
+
+# Navigation container jako samostatný widget
+# (Vyřazeno – komponenta se nyní přidává výhradně přes !extend výše)

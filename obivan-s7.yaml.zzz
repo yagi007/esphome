@@ -1,0 +1,245 @@
+esphome:
+  name: obivan-s7
+  friendly_name: ObiVan-S7
+  min_version: "2025.4.2"
+  platformio_options:
+    build_flags: "-DBOARD_HAS_PSRAM"
+    board_build.arduino.memory_type: qio_opi
+    board_build.flash_mode: dio
+    board_upload.maximum_ram_size: 524288
+
+
+psram:
+  mode: octal
+  speed: 120MHz
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: ESP32S3
+  flash_size: 8MB
+  cpu_frequency: 240MHz
+  framework:
+    type: esp-idf
+    advanced:
+      enable_idf_experimental_features: true
+    sdkconfig_options:
+      COMPILER_OPTIMIZATION_SIZE: y
+      CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
+      CONFIG_ESPTOOLPY_FLASHSIZE_8MB: "y"
+      CONFIG_FREERTOS_HZ: "1000"
+      CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240: y
+      CONFIG_ESPTOOLPY_FLASHMODE_QIO: y
+      CONFIG_ESPTOOLPY_FLASHFREQ_120M: y
+      CONFIG_SPIRAM_MODE_OCT: y
+      CONFIG_IDF_EXPERIMENTAL_FEATURES: y
+      CONFIG_SPIRAM_SPEED_120M: y
+      CONFIG_SPIRAM_FETCH_INSTRUCTIONS: y
+      CONFIG_SPIRAM_RODATA: y
+      CONFIG_ESP32S3_DATA_CACHE_LINE_64B: y
+      CONFIG_COMPILER_OPTIMIZATION_PERF: y
+
+i2c:
+  sda: GPIO08
+  scl: GPIO09
+  scan: True
+  id: bus_a
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "wkHlmA0Qy4UFYRS9DRcACfOO5xiHqt+7jzIa3YNRayQ="
+
+ota:
+  - platform: esphome
+    password: "243f16dd6b3829c4271dd77b05af91bc"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+
+
+################################################################################
+# Switch
+################################################################################
+switch:
+  - platform: restart
+    name: "Restart"
+    id: device_restart
+  
+  - platform: safe_mode
+    name: Use Safe Mode
+    id: device_safe_mode
+    
+  - platform: gpio
+    id: lcdbacklight
+    name: lcdbacklight
+    pin:
+      ch422g: ch422g_hub
+      number: 2
+      mode:
+        output: true
+      inverted: false
+    restore_mode: ALWAYS_ON
+
+ch422g:
+  - id: ch422g_hub
+
+
+
+
+
+color:
+  - id: my_red
+    red: 100%
+    green: 0%
+    blue: 0%
+  - id: my_pink
+    red: 100%
+    green: 10%
+    blue: 40%
+  - id: my_yellow
+    red: 100%
+    green: 100%
+    blue: 0%
+  - id: my_green
+    red: 0%
+    green: 100%
+    blue: 0%
+  - id: my_blue
+    red: 0%
+    green: 0%
+    blue: 100%
+  - id: my_gray
+    red: 50%
+    green: 50%
+    blue: 50%
+  - id: my_white
+    red: 100%
+    green: 100%
+    blue: 100%
+  - id: my_black
+    red: 0%
+    green: 0%
+    blue: 0%
+
+font:
+  - file: "Roboto-Bold.ttf"
+    id: roboto_big
+    size: 28  # Titulek a hlavní hodnoty (velký, dobře čitelný)
+  - file: "Roboto-Bold.ttf"
+    id: roboto
+    size: 16  # Sekce/sloupce
+  - file: "Roboto-Thin.ttf"
+    id: roboto_sm
+    size: 13  # Popisky, doplňkové hodnoty/menší text
+  - file: "materialdesignicons-webfont.ttf"
+    id: mdi
+    size: 18  # Ikony - optimální velikost pro sekce
+    glyphs: [
+      "\U000F0079", # mdi-battery
+      "\U000F0590", # mdi-solar-panel  
+      "\U000F1012", # mdi-transmission-tower
+      "\U000F140A", # mdi-lightning-bolt
+      "\U000F0238", # mdi-gauge
+      "\U000F0425", # mdi-power-plug
+      "\U000F06E8", # mdi-flash
+      "\U000F0A02", # mdi-sine-wave
+      ]
+  - file: "materialdesignicons-webfont.ttf"
+    id: mdi_small
+    size: 14  # Status ikony - optimální pro inverse boxes
+    glyphs: [
+      # Connection status ikony
+      "\U000F0079", # mdi-battery (SmartShunt)
+      "\U000F007A", # mdi-battery-outline (SmartShunt offline)
+
+      "\U000F1A74", # mdi-solar-panel (MPPT)
+      "\U000F010B", # mdi-car (OrionXS)
+      "\U000F010C", # mdi-car-battery (OrionXS)
+
+
+      ] 
+
+lvgl:
+  displays:
+    - waveshare_display
+  pages:
+    - id: main_page
+      widgets:
+        - label:
+            align: CENTER
+            text: 'Hello World!'
+
+### Display
+display:
+  - platform: rpi_dpi_rgb
+    id: waveshare_display
+    update_interval: never
+    auto_clear_enabled: false
+    color_order: RGB
+    pclk_frequency: 16MHZ
+    dimensions:
+      width: 800
+      height: 480
+    de_pin:
+      number: 5
+    hsync_pin:
+      number: 46
+      ignore_strapping_warning: true
+    vsync_pin:
+      number: 3
+      ignore_strapping_warning: true
+    pclk_pin: 7
+    pclk_inverted: true
+    reset_pin:
+      ch422g: ch422g_hub
+      number: 3
+    hsync_back_porch: 8
+    hsync_front_porch: 8
+    hsync_pulse_width: 4
+    vsync_back_porch: 16
+    vsync_front_porch: 16
+    vsync_pulse_width: 4
+    data_pins:
+      red:
+        - 1         #r3
+        - 2         #r4
+        - 42        #r5
+        - 41        #r6
+        - 40        #r7
+      blue:
+        - 14        #b3
+        - 38        #b4
+        - 18        #b5
+        - 17        #b6
+        - 10        #b7
+      green:
+        - 39        #g2
+        - 0         #g3
+        - 45        #g4
+        - 48        #g5
+        - 47        #g6
+        - 21        #g7
+
+touchscreen:
+  platform: gt911
+  id: my_touch
+  interrupt_pin: GPIO4
+  reset_pin:
+    ch422g: ch422g_hub
+    number: 1
+    mode: OUTPUT
+  on_touch:
+    - lambda: |-
+        ESP_LOGI("Touch", "Touch detected at x=%d, y=%d", touch.x, touch.y);
+  on_update:
+    - lambda: |-
+          for (auto touch: touches)  {
+              if (touch.state <= 2) {
+                ESP_LOGI("Touch points:", "id=%d x=%d, y=%d x.raw=%d, y.raw=%d", touch.id, touch.x, touch.y, touch.x_raw, touch.y_raw);
+              }
+          }  

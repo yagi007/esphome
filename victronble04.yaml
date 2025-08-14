@@ -1,0 +1,911 @@
+substitutions:
+  device_name: "victronble04"
+  friendly_name: "BLE Proxy 04 TFT"
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${device_name}
+  comment: TTGO T4 TFT 2.2" Victron Monitor
+
+external_components:
+  - source: github://Fabian-Schmidt/esphome-victron_ble
+
+esp32:
+  board: esp32dev
+  flash_size: 4MB
+
+
+  framework:
+    type: esp-idf        
+    #version: recommended
+
+psram:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "MtD8MNPSqjfvJVqRIjkzwrXsP5HFpsoMDH3uDuhA8f4="
+
+ota:
+  - platform: esphome
+    password: "842c5e28ecee202ad77f0473e1fe199d"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+#time:
+#  - platform: sntp
+#    id: sntp_time
+#    timezone: Europe/Prague
+
+esp32_ble_tracker:
+  scan_parameters:
+    interval: 2000ms    
+    window: 1000ms      
+    active: true
+
+# Global variables
+globals:
+  - id: current_page
+    type: int
+    restore_value: no
+    initial_value: '0'
+
+victron_ble:
+  - id: MySmartShunt
+    mac_address: "dc:61:47:b0:3a:7c"    
+    bindkey: "58a7a9dbc1735bb6578f6284f8982122"  
+  - id: MyOrionXS
+    mac_address: "C4:65:3B:FE:E1:D3"    
+    bindkey: "72bb827c1da9cbc0b4fa1622fceaad08"
+  - id: MySmartSolar
+    mac_address: "EC:54:E2:A1:52:FD"
+    bindkey: "d3e76da2965988e2edff050ffca2ea1d"
+
+sensor:
+  # === MySmartShunt (Battery Monitor) ===
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Battery Voltage"
+    type: BATTERY_VOLTAGE
+    id: shunt_battery_voltage
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Battery Current"
+    type: BATTERY_CURRENT
+    id: shunt_battery_current
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Battery Power"
+    type: BATTERY_POWER
+    id: shunt_battery_power
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt State of Charge"
+    type: STATE_OF_CHARGE
+    id: shunt_soc
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Consumed Ah"
+    type: CONSUMED_AH
+    id: shunt_consumed_ah
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Time to Go"
+    type: TIME_TO_GO
+    id: shunt_time_to_go
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt AUX Voltage"
+    type: AUX_VOLTAGE
+    id: shunt_aux_voltage
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Temperature"
+    type: TEMPERATURE
+    id: shunt_temperature
+
+  # === MySmartSolar (MPPT Solar Charger) ===
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Battery Voltage"
+    id: mppt_battery_voltage
+    type: BATTERY_VOLTAGE
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Battery Current"
+    id: mppt_battery_current
+    type: BATTERY_CURRENT
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Battery Power"
+    id: mppt_battery_power
+    type: BATTERY_POWER
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT PV Power"
+    id: mppt_pv_power
+    type: PV_POWER
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Yield Today"
+    id: mppt_yield_today
+    type: YIELD_TODAY
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Load Current"
+    type: LOAD_CURRENT
+    id: mppt_load_current
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Load Power"
+    type: LOAD_POWER
+    id: mppt_load_power
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT State of Charge"
+    type: STATE_OF_CHARGE
+    id: mppt_soc
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Temperature"
+    type: TEMPERATURE
+    id: mppt_temperature
+
+  # === MyOrionXS (DC/DC Converter) ===
+  - platform: victron_ble
+    victron_ble_id: MyOrionXS
+    name: "XS Input Voltage"
+    type: INPUT_VOLTAGE
+    id: xs_input_voltage
+  - platform: victron_ble
+    victron_ble_id: MyOrionXS
+    name: "XS Input Current"
+    type: INPUT_CURRENT
+    id: xs_input_current
+  - platform: victron_ble
+    victron_ble_id: MyOrionXS
+    name: "XS Input Power"
+    type: INPUT_POWER
+    id: xs_input_power
+  - platform: victron_ble
+    victron_ble_id: MyOrionXS
+    name: "XS Output Voltage"
+    id: xs_output_voltage
+    type: OUTPUT_VOLTAGE
+  - platform: victron_ble
+    victron_ble_id: MyOrionXS
+    name: "XS Output Current"
+    type: OUTPUT_CURRENT        
+    id: xs_output_current
+  - platform: victron_ble
+    victron_ble_id: MyOrionXS
+    name: "XS Output Power"
+    type: OUTPUT_POWER
+    id: xs_output_power
+
+binary_sensor:
+  # === MySmartShunt (Battery Monitor) ===
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Alarm"
+    type: ALARM
+    id: shunt_alarm
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Charger Error"
+    type: CHARGER_ERROR
+    id: shunt_charger_error
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Device Off"
+    type: DEVICE_STATE_OFF
+    id: shunt_device_off
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Device Fault"
+    type: DEVICE_STATE_FAULT
+    id: shunt_device_fault
+
+  # === MySmartSolar (MPPT Solar Charger) ===
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Alarm"
+    type: ALARM
+    id: mppt_alarm
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Charger Error"
+    id: mppt_charger_error
+    type: CHARGER_ERROR
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Device Off"
+    type: DEVICE_STATE_OFF
+    id: mppt_device_off
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Device Fault"
+    type: DEVICE_STATE_FAULT
+    id: mppt_device_fault
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Bulk Charging"
+    type: DEVICE_STATE_BULK
+    id: mppt_bulk_charging
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Absorption"
+    type: DEVICE_STATE_ABSORPTION
+    id: mppt_absorption
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Float"
+    type: DEVICE_STATE_FLOAT
+    id: mppt_float
+
+  # === MyOrionXS (DC/DC Converter) ===
+  - platform: victron_ble
+    victron_ble_id: MyOrionXS
+    name: "XS Charger Error"
+    id: xs_charger_error
+    type: CHARGER_ERROR
+
+  # === TLAČÍTKA PRO PŘEPÍNÁNÍ STRÁNEK ===
+  - platform: gpio
+    pin:
+      number: 38
+      mode:
+        input: true
+#        pullup: true
+      inverted: true
+    name: "Button Left"
+    id: button_left
+    on_press:
+      then:
+        - display.page.show_previous: tft_display
+        - component.update: tft_display
+        - logger.log: "Previous page"
+
+  - platform: gpio
+    pin:
+      number: 37
+      mode:
+        input: true
+#        pullup: true
+      inverted: true
+    name: "Button Center"
+    id: button_center
+    on_press:
+      then:
+        - logger.log: "Center button pressed"
+
+  - platform: gpio
+    pin:
+      number: 39
+      mode:
+        input: true
+#        pullup: true
+      inverted: true
+    name: "Button Right"
+    id: button_right
+    on_press:
+      then:
+        - display.page.show_next: tft_display
+        - component.update: tft_display
+        - logger.log: "Next page"
+
+text_sensor:
+  # === MySmartShunt (Battery Monitor) ===
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Device State"
+    type: DEVICE_STATE
+    id: shunt_device_state
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Alarm Reason"
+    type: ALARM_REASON
+    id: shunt_alarm_reason
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Charger Error Text"
+    type: CHARGER_ERROR
+    id: shunt_charger_error_text
+
+  # === MySmartSolar (MPPT Solar Charger) ===
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Device State"
+    type: DEVICE_STATE
+    id: mppt_device_state
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Alarm Reason"
+    type: ALARM_REASON
+    id: mppt_alarm_reason
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Charger Error Text"
+    type: CHARGER_ERROR
+    id: mppt_charger_error_text
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Off Reason"
+    type: OFF_REASON
+    id: mppt_off_reason
+
+  # === MyOrionXS (DC/DC Converter) ===
+  - platform: victron_ble
+    victron_ble_id: MyOrionXS
+    name: "XS Charger Error Text"
+    id: xs_charger_error_text
+    type: CHARGER_ERROR
+
+#button:
+#  - platform: restart
+#    name: "Restart ESP32"
+#    id: restart_button
+
+# Fonts pro TFT displej
+font:
+  - file: "Roboto-Bold.ttf"
+    id: roboto_big
+    size: 24  # Zvětšeno z 24px
+  - file: "Roboto-Bold.ttf"
+    id: roboto
+    size: 16  # Zvětšeno z 14px
+  - file: "Roboto-Thin.ttf"
+    id: roboto_sm
+    size: 13  # Zvětšeno z 11px
+  - file: "materialdesignicons-webfont.ttf"
+    id: mdi
+    size: 18  # Zvětšeno z 16px
+    glyphs: [
+      "\U000F0079", # mdi-battery
+      "\U000F0590", # mdi-solar-panel  
+      "\U000F1012", # mdi-transmission-tower
+      "\U000F140A", # mdi-lightning-bolt
+      "\U000F0238", # mdi-gauge
+      "\U000F0425", # mdi-power-plug
+      "\U000F06E8", # mdi-flash
+      "\U000F0A02", # mdi-sine-wave
+      ]
+  - file: "materialdesignicons-webfont.ttf"
+    id: mdi_small
+    size: 14  # Zvětšeno z 12px
+    glyphs: [
+      # Connection status ikony
+      "\U000F0079", # mdi-battery (SmartShunt)
+      "\U000F007A", # mdi-battery-outline (SmartShunt offline)
+      "\U000F1A74", # mdi-solar-panel (MPPT)
+      "\U000F010B", # mdi-car (OrionXS)
+      "\U000F010C", # mdi-car-battery (OrionXS)
+      "\U000F010D", # mdi-car-battery-outline (OrionXS offline)
+    ]
+
+# === BACKLIGHT CONTROL ===
+output:
+  - platform: ledc
+    pin: GPIO4  
+    id: backlight_pwm
+
+light:
+  - platform: monochromatic
+    output: backlight_pwm
+    name: "Display Backlight"
+    id: backlight
+    restore_mode: ALWAYS_ON
+    default_transition_length: 250ms
+
+# SPI konfigurace
+spi:
+  clk_pin: 18   
+  mosi_pin: 23  
+  
+display:
+  - platform: ili9xxx
+    model: ili9341
+    cs_pin: 27    
+    dc_pin: 32     
+    reset_pin: 5 
+    invert_colors: false
+    color_palette: 8BIT
+    color_order: BGR
+    pixel_mode: 18bit
+    rotation: 0
+    dimensions: 
+      height: 320
+      width: 240
+    data_rate: 40MHz
+    update_interval: 8s
+    id: tft_display
+    pages:
+      - id: page1
+        lambda: |-
+          // === LAYOUT KONSTANTY PRO TFT 240x320 ===
+          const int SCREEN_WIDTH = 240;
+          const int SCREEN_HEIGHT = 320;
+          const int MARGIN = 8;
+          const int SECTION_HEIGHT = 22;  // Zvětšeno z 22px
+          const int LINE_HEIGHT = 18;     // Zvětšeno z 16px
+          // 2-sloupcový layout
+          const int COL1_X = 15;        
+          const int COL2_X = 125;       
+
+          // Y pozice sekcí - kompaktní pro menší displej
+          const int TOP_HEADER_Y = 0;
+          const int TOP_HEADER_HEIGHT = 24;  
+          const int HEADER_Y = TOP_HEADER_Y + TOP_HEADER_HEIGHT + 4;
+          const int HEADER_HEIGHT = 45;  
+          const int SHUNT_Y = HEADER_Y + HEADER_HEIGHT + 6;
+          const int MPPT_Y = SHUNT_Y + SECTION_HEIGHT + 44;  
+          const int ORION_Y = MPPT_Y + SECTION_HEIGHT + 58;  
+
+          // === BAREVNÁ PALETA ===
+          Color background_color = Color(0, 0, 0);        // Černé pozadí
+          Color text_color = Color(255, 255, 255);        // Bílý text
+          Color header_bg = Color(0, 100, 200);           // Modrá pro hlavičky
+          Color header_text = Color(255, 255, 255);       // Bílý text hlaviček
+          Color battery_fill = Color(0, 255, 0);          // Zelená pro baterii
+          Color battery_low = Color(255, 165, 0);         // Oranžová pro nízkou baterii
+          Color battery_critical = Color(255, 0, 0);      // Červená pro kritickou baterii
+          Color solar_color = Color(255, 165, 0);         // Oranžová pro solár
+          Color error_color = Color(255, 0, 0);           // Červená pro chyby
+          Color frame_color = Color(100, 100, 100);       // Šedá pro rámečky
+
+          // === VYMAZÁNÍ OBRAZOVKY ===
+          it.fill(background_color);
+
+          // === VNĚJŠÍ RÁMEČEK ===
+          // it.rectangle(0, 0, SCREEN_WIDTH-1, SCREEN_HEIGHT-1, frame_color);
+
+          // === TOP STATUS BAR ===
+          it.filled_rectangle(0, TOP_HEADER_Y, SCREEN_WIDTH, TOP_HEADER_HEIGHT, header_bg);
+
+          // Kontrola připojení zařízení
+          bool shunt_connected = id(shunt_battery_voltage).has_state() && !isnan(id(shunt_battery_voltage).state);
+          bool mppt_connected = id(mppt_battery_voltage).has_state() && !isnan(id(mppt_battery_voltage).state);
+          bool orion_connected = id(xs_input_voltage).has_state() && !isnan(id(xs_input_voltage).state);
+
+          // Connection status ikony vlevo
+          const int icon_size = 14;
+          const int icon_offset = icon_size / 2;
+          const int enhanced_icon_size = 18;  // Větší čtverečky pro připojená zařízení
+          const int enhanced_offset = enhanced_icon_size / 2;
+          int status_y = TOP_HEADER_Y + 5;
+
+          // SmartShunt (Battery Icon)
+          if (shunt_connected) {
+            // Výrazný rámeček + výplň pro připojené zařízení
+            it.filled_rectangle(4, status_y-2, enhanced_icon_size, enhanced_icon_size, Color(0, 255, 0));
+            it.rectangle(4, status_y-2, enhanced_icon_size, enhanced_icon_size, Color(255, 255, 255));
+            it.printf(4 + enhanced_offset, status_y-2 + enhanced_offset - 1, id(mdi_small), Color(0, 0, 0), TextAlign::CENTER, "\U000F0079");
+          } else {
+            // Jen ikona pro odpojené zařízení
+            it.printf(4 + icon_offset + 2, status_y + icon_offset - 1, id(mdi_small), Color(80, 80, 80), TextAlign::CENTER, "\U000F007A");
+          }
+
+          // MPPT (Solar Panel Icon)
+          if (mppt_connected) {
+            // Výrazný rámeček + výplň pro připojené zařízení
+            it.filled_rectangle(26, status_y-2, enhanced_icon_size, enhanced_icon_size, Color(255, 165, 0));
+            it.rectangle(26, status_y-2, enhanced_icon_size, enhanced_icon_size, Color(255, 255, 255));
+            it.printf(26 + enhanced_offset, status_y-2 + enhanced_offset - 1, id(mdi_small), Color(0, 0, 0), TextAlign::CENTER, "\U000F1A74");
+          } else {
+            // Jen ikona pro odpojené zařízení
+            it.printf(26 + icon_offset + 2, status_y + icon_offset - 1, id(mdi_small), Color(80, 80, 80), TextAlign::CENTER, "\U000F1A74");
+          }
+
+          // OrionXS (DC/DC Icon)
+          if (orion_connected) {
+            // Výrazný rámeček + výplň pro připojené zařízení
+            it.filled_rectangle(48, status_y-2, enhanced_icon_size, enhanced_icon_size, Color(0, 150, 255));
+            it.rectangle(48, status_y-2, enhanced_icon_size, enhanced_icon_size, Color(255, 255, 255));
+            it.printf(48 + enhanced_offset, status_y-2 + enhanced_offset - 1, id(mdi_small), Color(0, 0, 0), TextAlign::CENTER, "\U000F010B");
+          } else {
+            // Jen ikona pro odpojené zařízení  
+            it.printf(48 + icon_offset + 2, status_y + icon_offset - 1, id(mdi_small), Color(80, 80, 80), TextAlign::CENTER, "\U000F010B");
+          }
+
+          // Název systému uprostřed
+          it.printf(SCREEN_WIDTH/2, TOP_HEADER_Y+3, id(roboto), header_text, TextAlign::TOP_CENTER, "VICTRON (1/2)");
+
+          // Čas vpravo (zatím zakomentován)
+          //auto time = id(sntp_time).now();
+          //it.printf(SCREEN_WIDTH-4, TOP_HEADER_Y+3, id(roboto_sm), header_text, TextAlign::TOP_RIGHT,
+          //         "%02d:%02d", time.hour, time.minute);
+
+          // === KONSTANTY PRO BATERII ===
+          const float BATTERY_NOMINAL_CAPACITY = 150.0;
+
+          // === HORNÍ ČÁST: BATTERY GAUGE ===
+          float soc = id(shunt_soc).has_state() ? id(shunt_soc).state : 0.0;
+          float voltage = id(shunt_battery_voltage).has_state() ? id(shunt_battery_voltage).state : 0.0;
+          float consumed_ah = id(shunt_consumed_ah).has_state() ? id(shunt_consumed_ah).state : 0.0;
+
+          // Battery gauge rozměry
+          const int GAUGE_WIDTH = SCREEN_WIDTH - 2*MARGIN;
+          const int GAUGE_HEIGHT = HEADER_HEIGHT - 16;
+          int filled_width = (int)(soc * GAUGE_WIDTH / 100.0);
+
+          // Barva výplně podle SOC
+          Color gauge_fill_color;
+          if (soc > 50) {
+            gauge_fill_color = battery_fill;      // Zelená pro >50%
+          } else if (soc > 20) {
+            gauge_fill_color = battery_low;       // Oranžová pro 20-50%
+          } else {
+            gauge_fill_color = battery_critical;  // Červená pro <20%
+          }
+
+          // Vykreslení battery gauge
+          it.rectangle(MARGIN, HEADER_Y, GAUGE_WIDTH, GAUGE_HEIGHT, frame_color);
+          it.filled_rectangle(MARGIN, HEADER_Y, filled_width, GAUGE_HEIGHT, gauge_fill_color);
+
+          // === INVERZNÍ TEXT V BATTERY GAUGE ===
+          // OPRAVENÁ POZICE - text více nahoru
+          if (filled_width > 0) {
+            it.start_clipping(MARGIN, HEADER_Y, MARGIN + filled_width, HEADER_Y + GAUGE_HEIGHT);
+            it.printf(SCREEN_WIDTH/2, HEADER_Y+2, id(roboto_big), Color(0, 0, 0), TextAlign::TOP_CENTER, "%.0f%%", soc);
+            it.end_clipping();
+          }
+
+          int empty_start = MARGIN + filled_width;
+          int empty_width = GAUGE_WIDTH - filled_width;
+          if (empty_width > 0) {
+            it.start_clipping(empty_start, HEADER_Y, empty_start + empty_width, HEADER_Y + GAUGE_HEIGHT);
+            it.printf(SCREEN_WIDTH/2, HEADER_Y+2, id(roboto_big), text_color, TextAlign::TOP_CENTER, "%.0f%%", soc);
+            it.end_clipping();
+          }
+
+          // === INFORMACE POD BATTERY GAUGE ===
+          float remaining_ah = BATTERY_NOMINAL_CAPACITY - consumed_ah;
+          float current_total = id(shunt_battery_current).has_state() ? id(shunt_battery_current).state : 0.0;
+
+          std::string battery_status = "";
+          Color status_color = text_color;
+          if (current_total > 0.1) {
+            battery_status = " +";
+            status_color = Color(0, 255, 0);    // Zelená pro nabíjení
+          } else if (current_total < -0.1) {
+            battery_status = " -";
+            status_color = Color(255, 165, 0);  // Oranžová pro vybíjení
+          } else {
+            battery_status = " =";
+            status_color = Color(100, 100, 100); // Šedá pro klid
+          }
+
+          it.printf(SCREEN_WIDTH/2, HEADER_Y+GAUGE_HEIGHT+2, id(roboto_sm), status_color, TextAlign::TOP_CENTER,
+                   "%.1fV  %.1f/%.0fAh%s", voltage, remaining_ah, BATTERY_NOMINAL_CAPACITY, battery_status.c_str());
+
+          // === SMART SHUNT SEKCE ===
+          bool shunt_has_error = id(shunt_charger_error).has_state() ? id(shunt_charger_error).state : false;
+          bool shunt_has_alarm = id(shunt_alarm).has_state() ? id(shunt_alarm).state : false;
+
+          Color shunt_bg_color = shunt_has_error || shunt_has_alarm ? error_color : Color(0, 150, 0);
+          it.filled_rectangle(0, SHUNT_Y, SCREEN_WIDTH, SECTION_HEIGHT, shunt_bg_color);
+
+          if (shunt_has_error || shunt_has_alarm) {
+            if (shunt_has_alarm) {
+              it.printf(SCREEN_WIDTH-30, SHUNT_Y+3, id(roboto_sm), Color(255, 255, 255), TextAlign::TOP_LEFT, "ALARM");
+            } else {
+              it.printf(SCREEN_WIDTH-20, SHUNT_Y+3, id(roboto_sm), Color(255, 255, 255), TextAlign::TOP_LEFT, "ERR!");
+            }
+          }
+
+          it.printf(4, SHUNT_Y+4, id(mdi), header_text, TextAlign::TOP_LEFT, "\U000F0079");
+          it.printf(SCREEN_WIDTH/2, SHUNT_Y+3, id(roboto), header_text, TextAlign::TOP_CENTER, "Smart Shunt");
+
+          // Obsah v 2 sloupcích
+          int y = SHUNT_Y + SECTION_HEIGHT + 3;
+          float current = id(shunt_battery_current).has_state() ? id(shunt_battery_current).state : 0.0;
+          float power = id(shunt_battery_power).has_state() ? id(shunt_battery_power).state : 0.0;
+          float time_to_go = id(shunt_time_to_go).has_state() ? id(shunt_time_to_go).state : 0.0;
+
+          // Barevný proud podle směru
+          Color current_color = current > 0.1 ? Color(0, 255, 0) : (current < -0.1 ? Color(255, 165, 0) : text_color);
+
+          if (abs(current) >= 100) {
+            it.printf(COL1_X, y, id(roboto), current_color, TextAlign::TOP_LEFT, "%.0fA", current);
+          } else {
+            it.printf(COL1_X, y, id(roboto), current_color, TextAlign::TOP_LEFT, "%.1fA", current);
+          }
+
+          if (abs(power) >= 1000) {
+            it.printf(COL2_X, y, id(roboto), text_color, TextAlign::TOP_LEFT, "%.1fkW", power/1000);
+          } else {
+            it.printf(COL2_X, y, id(roboto), text_color, TextAlign::TOP_LEFT, "%.0fW", power);
+          }
+
+          y += LINE_HEIGHT;
+          if (time_to_go >= 1440) {
+            it.printf(COL1_X, y, id(roboto), text_color, TextAlign::TOP_LEFT, "TTG: %.0fd", time_to_go/1440);
+          } else if (time_to_go >= 60) {
+            it.printf(COL1_X, y, id(roboto), text_color, TextAlign::TOP_LEFT, "TTG: %.1fh", time_to_go/60);
+          } else {
+            it.printf(COL1_X, y, id(roboto), text_color, TextAlign::TOP_LEFT, "TTG: %.0fmin", time_to_go);
+          }
+          it.printf(COL2_X, y, id(roboto), text_color, TextAlign::TOP_LEFT, "%.1fAh left", remaining_ah);
+
+          // === MPPT SEKCE ===
+          bool mppt_has_error = id(mppt_charger_error).has_state() ? id(mppt_charger_error).state : false;
+          std::string mppt_state_text = id(mppt_device_state).has_state() ? id(mppt_device_state).state : "Unknown";
+
+          Color mppt_bg_color = mppt_has_error ? error_color : solar_color;
+          it.filled_rectangle(0, MPPT_Y, SCREEN_WIDTH, SECTION_HEIGHT, mppt_bg_color);
+
+          if (mppt_has_error) {
+            it.printf(SCREEN_WIDTH-20, MPPT_Y+3, id(roboto_sm), header_text, TextAlign::TOP_LEFT, "ERR!");
+          }
+
+          it.printf(4, MPPT_Y+4, id(mdi), header_text, TextAlign::TOP_LEFT, "\U000F0590");
+          it.printf(SCREEN_WIDTH/2, MPPT_Y+3, id(roboto), header_text, TextAlign::TOP_CENTER, "MPPT Solar");
+
+          y = MPPT_Y + SECTION_HEIGHT + 3;
+          float bat_voltage = id(mppt_battery_voltage).has_state() ? id(mppt_battery_voltage).state : 0.0;
+          float bat_current = id(mppt_battery_current).has_state() ? id(mppt_battery_current).state : 0.0;
+
+          it.printf(COL1_X, y, id(roboto), text_color, TextAlign::TOP_LEFT, "Bat: %.2fV", bat_voltage);
+          it.printf(COL2_X, y, id(roboto), Color(0, 255, 0), TextAlign::TOP_LEFT, "%.2fA", bat_current);
+
+          y += LINE_HEIGHT;
+          float pv_power = id(mppt_pv_power).has_state() ? id(mppt_pv_power).state : 0.0;
+          float load_current = id(mppt_load_current).has_state() ? id(mppt_load_current).state : 0.0;
+          
+          Color pv_color = pv_power > 50 ? Color(255, 255, 0) : Color(100, 100, 100); // Žlutá pro aktivní PV
+          if (pv_power >= 1000) {
+            it.printf(COL1_X, y, id(roboto), pv_color, TextAlign::TOP_LEFT, "PV: %.1fkW", pv_power/1000);
+          } else {
+            it.printf(COL1_X, y, id(roboto), pv_color, TextAlign::TOP_LEFT, "PV: %.0fW", pv_power);
+          }
+          it.printf(COL2_X, y, id(roboto), Color(255, 165, 0), TextAlign::TOP_LEFT, "Load: %.1fA", load_current);
+
+          y += LINE_HEIGHT;
+          float yield_today = id(mppt_yield_today).has_state() ? id(mppt_yield_today).state : 0.0;
+          it.printf(COL1_X, y, id(roboto_sm), Color(200, 200, 200), TextAlign::TOP_LEFT, "State: %s", mppt_state_text.c_str());
+          it.printf(COL2_X, y, id(roboto), Color(255, 255, 0), TextAlign::TOP_LEFT, "%.2fkWh", yield_today);
+
+          // === ORIONXS SEKCE ===
+          bool orion_has_error = id(xs_charger_error).has_state() ? id(xs_charger_error).state : false;
+
+          Color orion_bg_color = orion_has_error ? error_color : Color(0, 150, 255);
+          it.filled_rectangle(0, ORION_Y, SCREEN_WIDTH, SECTION_HEIGHT, orion_bg_color);
+
+          if (orion_has_error) {
+            it.printf(SCREEN_WIDTH-20, ORION_Y+3, id(roboto_sm), header_text, TextAlign::TOP_LEFT, "ERR!");
+          }
+
+          it.printf(4, ORION_Y+4, id(mdi), header_text, TextAlign::TOP_LEFT, "\U000F1012");
+          it.printf(SCREEN_WIDTH/2, ORION_Y+3, id(roboto), header_text, TextAlign::TOP_CENTER, "ORION XS DC/DC");
+
+          y = ORION_Y + SECTION_HEIGHT + 3;
+          float in_voltage = id(xs_input_voltage).has_state() ? id(xs_input_voltage).state : 0.0;
+          float in_current = id(xs_input_current).has_state() ? id(xs_input_current).state : 0.0;
+
+          it.printf(COL1_X, y, id(roboto), text_color, TextAlign::TOP_LEFT, "In: %.2fV", in_voltage);
+          it.printf(COL2_X, y, id(roboto), Color(0, 255, 255), TextAlign::TOP_LEFT, "%.2fA", in_current);
+
+          y += LINE_HEIGHT;
+          float out_voltage = id(xs_output_voltage).has_state() ? id(xs_output_voltage).state : 0.0;
+          float out_current = id(xs_output_current).has_state() ? id(xs_output_current).state : 0.0;
+          it.printf(COL1_X, y, id(roboto), text_color, TextAlign::TOP_LEFT, "Out: %.2fV", out_voltage);
+          it.printf(COL2_X, y, id(roboto), Color(0, 255, 0), TextAlign::TOP_LEFT, "%.2fA", out_current);
+
+          y += LINE_HEIGHT;
+          float in_power = id(xs_input_power).has_state() ? id(xs_input_power).state : 0.0;
+          float out_power = id(xs_output_power).has_state() ? id(xs_output_power).state : 0.0;
+          float efficiency = (in_power > 0) ? (out_power / in_power * 100) : 0;
+
+          if (in_power >= 1000) {
+            it.printf(COL1_X, y, id(roboto), text_color, TextAlign::TOP_LEFT, "%.1fkW", in_power/1000);
+          } else {
+            it.printf(COL1_X, y, id(roboto), text_color, TextAlign::TOP_LEFT, "%.0fW", in_power);
+          }
+          
+          Color eff_color = efficiency > 90 ? Color(0, 255, 0) : (efficiency > 80 ? Color(255, 255, 0) : Color(255, 165, 0));
+          it.printf(COL2_X, y, id(roboto_sm), eff_color, TextAlign::TOP_LEFT, "Eff: %.0f%%", efficiency);
+
+      - id: page2
+        lambda: |-
+          // === LAYOUT KONSTANTY PRO TFT 240x320 DETAIL STRÁNKA ===
+          const int SCREEN_WIDTH = 240;
+          const int SCREEN_HEIGHT = 320;
+          const int MARGIN = 6;
+          const int SECTION_HEIGHT = 22;  // Zvětšeno z 20px
+          const int LINE_HEIGHT = 16;     // Zvětšeno z 14px
+          const int COL1_X = 12;
+          const int COL2_X = 125;
+
+          // Y pozice sekcí (kompaktnější)
+          const int TOP_HEADER_Y = 0;
+          const int TOP_HEADER_HEIGHT = 24;  
+          const int HEADER_Y = TOP_HEADER_Y + TOP_HEADER_HEIGHT + 4;
+          const int TEMP_Y = HEADER_Y + 2;
+          const int POWER_Y = TEMP_Y + 76;
+          const int EFF_Y = POWER_Y + 76;
+          const int SYS_Y = EFF_Y + 64;
+
+          // === BAREVNÁ PALETA ===
+          Color background_color = Color(0, 0, 0);        
+          Color text_color = Color(255, 255, 255);        
+          Color header_bg = Color(100, 0, 150);           // Fialová pro detail stránku
+          Color header_text = Color(255, 255, 255);       
+          Color temp_color = Color(255, 100, 0);          // Oranžová pro teploty
+          Color power_color = Color(0, 200, 100);         // Zelená pro výkony
+          Color eff_color_bg = Color(0, 100, 200);        // Modrá pro efektivitu
+          Color sys_color = Color(150, 150, 0);           // Žlutá pro systém
+
+          // === VYMAZÁNÍ OBRAZOVKY ===
+          it.fill(background_color);
+
+          // === TOP STATUS BAR ===
+          it.filled_rectangle(0, TOP_HEADER_Y, SCREEN_WIDTH, TOP_HEADER_HEIGHT, header_bg);
+
+          // Kontrola připojení zařízení
+          bool shunt_connected = id(shunt_battery_voltage).has_state() && !isnan(id(shunt_battery_voltage).state);
+          bool mppt_connected = id(mppt_battery_voltage).has_state() && !isnan(id(mppt_battery_voltage).state);
+          bool orion_connected = id(xs_input_voltage).has_state() && !isnan(id(xs_input_voltage).state);
+
+          // Connection status ikony vlevo  
+          const int icon_size = 14;
+          const int enhanced_icon_size = 18;
+          const int enhanced_offset = enhanced_icon_size / 2;
+          int status_y = TOP_HEADER_Y + 5;
+
+          // Stejné zvýrazněné ikony jako na první stránce
+          if (shunt_connected) {
+            it.filled_rectangle(4, status_y-2, enhanced_icon_size, enhanced_icon_size, Color(0, 255, 0));
+            it.rectangle(4, status_y-2, enhanced_icon_size, enhanced_icon_size, Color(255, 255, 255));
+            it.printf(4 + enhanced_offset, status_y-2 + enhanced_offset - 1, id(mdi_small), Color(0, 0, 0), TextAlign::CENTER, "\U000F0079");
+          } else {
+            it.printf(4 + icon_size/2 + 2, status_y + icon_size/2 - 1, id(mdi_small), Color(80, 80, 80), TextAlign::CENTER, "\U000F007A");
+          }
+
+          if (mppt_connected) {
+            it.filled_rectangle(26, status_y-2, enhanced_icon_size, enhanced_icon_size, Color(255, 165, 0));
+            it.rectangle(26, status_y-2, enhanced_icon_size, enhanced_icon_size, Color(255, 255, 255));
+            it.printf(26 + enhanced_offset, status_y-2 + enhanced_offset - 1, id(mdi_small), Color(0, 0, 0), TextAlign::CENTER, "\U000F1A74");
+          } else {
+            it.printf(26 + icon_size/2 + 2, status_y + icon_size/2 - 1, id(mdi_small), Color(80, 80, 80), TextAlign::CENTER, "\U000F1A74");
+          }
+
+          if (orion_connected) {
+            it.filled_rectangle(48, status_y-2, enhanced_icon_size, enhanced_icon_size, Color(0, 150, 255));
+            it.rectangle(48, status_y-2, enhanced_icon_size, enhanced_icon_size, Color(255, 255, 255));
+            it.printf(48 + enhanced_offset, status_y-2 + enhanced_offset - 1, id(mdi_small), Color(0, 0, 0), TextAlign::CENTER, "\U000F010B");
+          } else {
+            it.printf(48 + icon_size/2 + 2, status_y + icon_size/2 - 1, id(mdi_small), Color(80, 80, 80), TextAlign::CENTER, "\U000F010B");
+          }
+
+          // Název systému uprostřed s indikátorem stránky
+          it.printf(SCREEN_WIDTH/2, TOP_HEADER_Y+4, id(roboto), header_text, TextAlign::TOP_CENTER, "DIAG (2/2)");
+
+          // === HEADER - DETAIL VIEW ===
+          // it.filled_rectangle(0, HEADER_Y, SCREEN_WIDTH, SECTION_HEIGHT, header_bg);
+          //it.printf(4, HEADER_Y+3, id(mdi), header_text, TextAlign::TOP_LEFT, "\U000F0238");
+          //it.printf(SCREEN_WIDTH/2, HEADER_Y+2, id(roboto), header_text, TextAlign::TOP_CENTER, "SYSTEM DETAILS");
+
+          // === SEKCE 1: TEPLOTY & DIAGNOSTIKA ===
+          it.filled_rectangle(0, TEMP_Y, SCREEN_WIDTH, SECTION_HEIGHT, temp_color);
+          it.printf(4, TEMP_Y+3, id(mdi), header_text, TextAlign::TOP_LEFT, "\U000F140A");
+          it.printf(SCREEN_WIDTH/2, TEMP_Y+2, id(roboto), header_text, TextAlign::TOP_CENTER, "TEMPERATURES & STATUS");
+
+          int y = TEMP_Y + SECTION_HEIGHT + 3;
+          // Teploty
+          float shunt_temp = id(shunt_temperature).has_state() ? id(shunt_temperature).state : 0.0;
+          float mppt_temp = id(mppt_temperature).has_state() ? id(mppt_temperature).state : 0.0;
+
+          Color temp_text_color = shunt_temp > 60 ? Color(255, 0, 0) : (shunt_temp > 40 ? Color(255, 165, 0) : text_color);
+          it.printf(COL1_X, y, id(roboto), temp_text_color, TextAlign::TOP_LEFT, "Shunt: %.0f°C", shunt_temp);
+          
+          Color mppt_temp_color = mppt_temp > 70 ? Color(255, 0, 0) : (mppt_temp > 50 ? Color(255, 165, 0) : text_color);
+          it.printf(COL2_X, y, id(roboto), mppt_temp_color, TextAlign::TOP_LEFT, "MPPT: %.0f°C", mppt_temp);
+
+          y += LINE_HEIGHT;
+          // AUX napětí a diagnostika
+          float aux_voltage = id(shunt_aux_voltage).has_state() ? id(shunt_aux_voltage).state : 0.0;
+          std::string shunt_state = id(shunt_device_state).has_state() ? id(shunt_device_state).state : "Unknown";
+          it.printf(COL1_X, y, id(roboto), text_color, TextAlign::TOP_LEFT, "AUX: %.2fV", aux_voltage);
+          it.printf(COL2_X, y, id(roboto_sm), Color(200, 200, 200), TextAlign::TOP_LEFT, "%s", shunt_state.c_str());
+
+          y += LINE_HEIGHT;
+          // Error stavy
+          bool any_errors = false;
+          std::string error_text = "All OK";
+          Color error_status_color = Color(0, 255, 0);
+          
+          if (id(shunt_charger_error).has_state() && id(shunt_charger_error).state) {
+            error_text = "Shunt Error";
+            any_errors = true;
+            error_status_color = Color(255, 0, 0);
+          } else if (id(mppt_charger_error).has_state() && id(mppt_charger_error).state) {
+            error_text = "MPPT Error";
+            any_errors = true;
+            error_status_color = Color(255, 0, 0);
+          } else if (id(xs_charger_error).has_state() && id(xs_charger_error).state) {
+            error_text = "OrionXS Error";
+            any_errors = true;
+            error_status_color = Color(255, 0, 0);
+          }
+          it.printf(COL1_X, y, id(roboto_sm), error_status_color, TextAlign::TOP_LEFT, "Status: %s", error_text.c_str());
+
+          // === SEKCE 2: POWER FLOW ANALYSIS ===
+          it.filled_rectangle(0, POWER_Y, SCREEN_WIDTH, SECTION_HEIGHT, power_color);
+          it.printf(4, POWER_Y+3, id(mdi), header_text, TextAlign::TOP_LEFT, "\U000F06E8");
+          it.printf(SCREEN_WIDTH/2, POWER_Y+2, id(roboto), header_text, TextAlign::TOP_CENTER, "POWER FLOW");
+
+          y = POWER_Y + SECTION_HEIGHT + 3;
+          // Power flow výpočty
+          float mppt_to_battery = id(mppt_battery_current).has_state() ? id(mppt_battery_current).state : 0.0;
+          float orion_to_battery = id(xs_output_current).has_state() ? id(xs_output_current).state : 0.0;
+          float load_from_battery = id(mppt_load_current).has_state() ? id(mppt_load_current).state : 0.0;
+          float net_battery = mppt_to_battery + orion_to_battery - load_from_battery;
+
+          it.printf(COL1_X, y, id(roboto_sm), Color(255, 255, 0), TextAlign::TOP_LEFT, "Solar->Bat: %.1fA", mppt_to_battery);
+          it.printf(COL2_X, y, id(roboto_sm), Color(0, 255, 255), TextAlign::TOP_LEFT, "DC/DC->Bat: %.1fA", orion_to_battery);
+          y += LINE_HEIGHT;
+
+          it.printf(COL1_X, y, id(roboto_sm), Color(255, 165, 0), TextAlign::TOP_LEFT, "Load<-Bat: %.1fA", load_from_battery);
+          Color net_color = net_battery > 0 ? Color(0, 255, 0) : (net_battery < 0 ? Color(255, 165, 0) : text_color);
+          it.printf(COL2_X, y, id(roboto_sm), net_color, TextAlign::TOP_LEFT, "Net: %.1fA", net_battery);
+          y += LINE_HEIGHT;
+
+          // Power totals
+          float total_solar_power = id(mppt_pv_power).has_state() ? id(mppt_pv_power).state : 0.0;
+          float total_load_power = id(mppt_load_power).has_state() ? id(mppt_load_power).state : 0.0;
+
+          it.printf(COL1_X, y, id(roboto), Color(255, 255, 0), TextAlign::TOP_LEFT, "Solar: %.0fW", total_solar_power);
+          it.printf(COL2_X, y, id(roboto), Color(255, 165, 0), TextAlign::TOP_LEFT, "Load: %.0fW", total_load_power);
+
+          // === SEKCE 3: EFFICIENCY & PERFORMANCE ===
+          it.filled_rectangle(0, EFF_Y, SCREEN_WIDTH, SECTION_HEIGHT, eff_color_bg);
+          it.printf(4, EFF_Y+3, id(mdi), header_text, TextAlign::TOP_LEFT, "\U000F0238");
+          it.printf(SCREEN_WIDTH/2, EFF_Y+2, id(roboto), header_text, TextAlign::TOP_CENTER, "EFFICIENCY");
+
+          y = EFF_Y + SECTION_HEIGHT + 3;
+          // Efficiency výpočty
+          float in_power = id(xs_input_power).has_state() ? id(xs_input_power).state : 0.0;
+          float out_power = id(xs_output_power).has_state() ? id(xs_output_power).state : 0.0;
+          float orion_eff = (in_power > 0) ? (out_power / in_power * 100) : 0;
+          float mppt_eff = (total_solar_power > 0) ? (mppt_to_battery * 13.4 / total_solar_power * 100) : 0;
+
+          Color mppt_eff_color = mppt_eff > 90 ? Color(0, 255, 0) : (mppt_eff > 80 ? Color(255, 255, 0) : Color(255, 165, 0));
+          Color orion_eff_color = orion_eff > 90 ? Color(0, 255, 0) : (orion_eff > 80 ? Color(255, 255, 0) : Color(255, 165, 0));
+          
+          it.printf(COL1_X, y, id(roboto), mppt_eff_color, TextAlign::TOP_LEFT, "MPPT: %.1f%%", mppt_eff);
+          it.printf(COL2_X, y, id(roboto), orion_eff_color, TextAlign::TOP_LEFT, "OrionXS: %.1f%%", orion_eff);
+          y += LINE_HEIGHT;
+
+          // Utilization factors
+          float load_factor = (total_load_power > 0 && total_solar_power > 0) ? (total_load_power / total_solar_power * 100) : 0;
+          it.printf(COL1_X, y, id(roboto_sm), text_color, TextAlign::TOP_LEFT, "Load Factor: %.0f%%", load_factor);
+          
+          // Today's yield
+          float yield_today = id(mppt_yield_today).has_state() ? id(mppt_yield_today).state : 0.0;
+          it.printf(COL2_X, y, id(roboto_sm), Color(255, 255, 0), TextAlign::TOP_LEFT, "Yield: %.1fkWh", yield_today);
+
+          // === SEKCE 4: SYSTEM INFO ===
+          it.filled_rectangle(0, SYS_Y, SCREEN_WIDTH, SECTION_HEIGHT, sys_color);
+          it.printf(4, SYS_Y+3, id(mdi), header_text, TextAlign::TOP_LEFT, "\U000F0425");
+          it.printf(SCREEN_WIDTH/2, SYS_Y+2, id(roboto), header_text, TextAlign::TOP_CENTER, "SYSTEM INFO");
+
+          y = SYS_Y + SECTION_HEIGHT + 3;
+          // System info
+          it.printf(COL1_X, y, id(roboto_sm), text_color, TextAlign::TOP_LEFT, "Battery: 150Ah LiFePO4");
+          it.printf(COL2_X, y, id(roboto_sm), text_color, TextAlign::TOP_LEFT, "Nominal: 12V");
+          y += LINE_HEIGHT;
+
+          it.printf(COL1_X, y, id(roboto_sm), text_color, TextAlign::TOP_LEFT, "Update: 8s");
+          // Čas by byl zde, ale je zakomentován
+          it.printf(COL2_X, y, id(roboto_sm), Color(100, 255, 100), TextAlign::TOP_LEFT, "Pages: L/R buttons");
+          y += LINE_HEIGHT;
+          it.printf(COL1_X, y, id(roboto_sm), Color(150, 150, 150), TextAlign::TOP_LEFT, "ESPHome 2025.1.x");
+          it.printf(COL2_X, y, id(roboto_sm), Color(150, 150, 150), TextAlign::TOP_LEFT, "TFT 240x320");
+
+
+    

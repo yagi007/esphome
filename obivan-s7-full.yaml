@@ -1,0 +1,14 @@
+substitutions:
+  # Header a ikony
+  header_bg_color: 0x000000
+  header_border_color: 0x333333
+  header_time_color: 0xFFFFFF
+  header_date_color: 0xCCCCCC
+  accent_blue: 0x2196F3
+  icon_color_on: 0x4CAF50
+  icon_color_off: 0xAAAAAA
+
+packages:
+  hardware: !include obivan/hardware.yaml
+  victronble: !include obivan/victronble.yaml
+  lvgl_gui: !include obivan/display/lvgl.yaml

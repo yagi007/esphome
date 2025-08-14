@@ -1,0 +1,1048 @@
+substitutions:
+  device_name: "victronble03"
+  friendly_name: "BLE Proxy 03"
+
+  gpio_display_clk: GPIO18
+  gpio_display_mosi: 23
+
+  gpio_display_cs: GPIO05
+  gpio_display_dc: GPIO17
+  gpio_display_busy: GPIO04
+  gpio_display_reset: GPIO16
+  
+  gpio_i2c_sda: GPIO21
+  gpio_i2c_scl: GPIO22
+  
+  # === 5SMĚRNÝ JOYSTICK MAPPING ===
+  # LaskaKit 5směrný joystick - 7 tlačítek
+  gpio_joystick_left: GPIO32    # Doleva = předchozí stránka
+  gpio_joystick_right: GPIO33   # Doprava = další stránka  
+  gpio_joystick_center: GPIO25  # Center = wake z deep sleep
+  gpio_joystick_rst: GPIO26     # RST = system reset
+  gpio_joystick_common: GPIO27  # Společný pin COM
+
+# Global variables for detecting if the display needs to be refreshed.
+globals:
+  - id: data_updated
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: display_update_in_progress
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: cpu_speed
+    type: int
+    restore_value: no
+    initial_value: "0"
+  # === DEEP SLEEP MONITORING ===
+  - id: sleep_cycles
+    type: int
+    restore_value: yes    # Zachovat počet cyklů přes restart
+    initial_value: "0"
+  - id: wake_reason
+    type: int
+    restore_value: no
+    initial_value: "0"    
+
+# === KOORDINOVANÁ SEKVENCE PRO DEEP SLEEP ===
+#script:
+#  - id: coordinated_sleep_cycle
+#    then:
+#      # 1. BLE scan dokončen (volá se z on_scan_end)
+#      - logger.log: "Krok 1: BLE scan dokončen, spouštím display update..."
+#      - globals.set:
+#          id: display_update_in_progress
+#          value: 'true'
+#      - lambda: 'id(sleep_cycles) = id(sleep_cycles) + 1;'
+      
+#      # 2. Spustit display update
+#      - component.update: eink_display
+#      
+#      # 3. Počkat na dokončení e-paper refreshe (20s buffer)
+#      - delay: 20s  # Dostatečný buffer pro e-paper
+      
+#      # 4. Označit display jako hotový
+#      - globals.set:
+#          id: display_update_in_progress
+#          value: 'false'
+          
+#      # 5. Teprve teď aktivovat deep sleep
+#      - logger.log: "Krok 5: Display update dokončen, aktivuji deep sleep..."
+#      - deep_sleep.enter: deep_sleep_manager
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${device_name}
+  comment: E-ink 4.2" ObiVan
+  on_boot:
+    priority: -100  # Původní nastavení
+    then:
+      - output.turn_on: epaper_power
+      - delay: 3s  # Stabilizace napájení e-paper
+      - logger.log: "Systém načten - BLE scan bude automaticky spuštěn..."
+      # BLE scan se spustí automaticky podle scan_parameters
+      # Po dokončení BLE scanu se aktivuje koordinovaný script
+
+external_components:
+  - source: github://Fabian-Schmidt/esphome-victron_ble
+
+esp32:
+  board: nodemcu-32s
+  flash_size: 16MB
+
+
+
+  framework:
+    type: esp-idf
+    # Konfigurace pro stabilnější chování s e-paper
+    sdkconfig_options:
+      CONFIG_FREERTOS_WATCHDOG_TIMEOUT_S: "15"  # Ještě delší watchdog timeout
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "15"       # Task watchdog timeout
+      CONFIG_ESP_INT_WDT_TIMEOUT_MS: "1000"     # Interrupt watchdog
+#      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0: "n"  # Disable idle task watchdog
+#      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1: "n"  # Disable idle task watchdog
+#      CONFIG_FREERTOS_UNICORE: "y"              # Single core mode pro stabilitu
+    
+
+# Enable logging
+logger:
+  level: DEBUG
+
+api:
+  encryption:
+    key: "kV0H95qgbsn8+wMa4pwcUbrrCR8IJemcmCJdaN5gPM4="
+
+ota:
+  - platform: esphome
+    password: "bfbabbfdc66e057dceabd1ab4012ca02"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  
+  # DŮLEŽITÉ: Pokud není WiFi, nezablokuj boot!
+  fast_connect: true        # Rychlejší připojení
+  power_save_mode: HIGH     # Lepší stabilita BLE
+  
+  # Fallback AP mode pokud se nelze připojit k hlavní WiFi
+
+time:
+  - platform: sntp
+    id: sntp_time
+    timezone: Europe/Prague
+    # Nastavení pro off-line provoz
+    servers:
+      - "pool.ntp.org"
+      - "time.nist.gov"
+      - "0.pool.ntp.org"
+    # Pokud není síť, nezablokuj systém
+    on_time_sync:
+      then:
+        - logger.log: "Čas synchronizován přes SNTP"
+
+esp32_ble_tracker:
+  scan_parameters:
+    # === OPTIMALIZACE PRO DEEP SLEEP A KOORDINACI ===
+    interval: 2000ms        # Delší interval = méně CPU/RAM usage
+    window: 800ms           # Kratší window = úspora energie  
+    active: true           # Passive scan = významná úspora energie
+    duration: 30s          # Scan jen 30s po probuzení
+    # Po scan_duration se BLE vypne automaticky = úspora RAM
+  on_scan_end:
+    then:
+      - logger.log: "BLE scan dokončen, spouštím koordinovanou sekvenci..."
+      # Místo přímého display update spustíme koordinovaný script
+#      - script.execute: coordinated_sleep_cycle
+
+
+#bluetooth_proxy:
+#  active: true
+#  connection_slots: 3
+
+
+# === KOORDINOVANÝ DEEP SLEEP ===
+# Aktivuje se pouze ze scriptu po dokončení display update
+#deep_sleep:
+#  id: deep_sleep_manager
+#  run_duration: 60s       # 30s BLE scan + 20s display update + 10s buffer
+#  sleep_duration: 5min    # Spí 5 minut = úspora baterie v autě
+#  wakeup_pin: $gpio_joystick_center  # Center joystick probouzí zařízení
+#  wakeup_pin_mode: INVERT_WAKEUP # Aktivní LOW (tlačítko na GND)
+
+
+output:
+  - platform: gpio
+    pin: GPIO02
+    id: epaper_power
+
+
+victron_ble:
+  - id: MySmartShunt
+    mac_address: "dc:61:47:b0:3a:7c"    # PLACEHOLDER - nahradit skutečnou MAC adresou
+    bindkey: "58a7a9dbc1735bb6578f6284f8982122"  # PLACEHOLDER - nahradit skutečným bindkey
+  - id: MyOrionXS
+    mac_address: "C4:65:3B:FE:E1:D3"    
+    bindkey: "72bb827c1da9cbc0b4fa1622fceaad08"
+  - id: MySmartSolar
+    mac_address: "EC:54:E2:A1:52:FD"
+    bindkey: "d3e76da2965988e2edff050ffca2ea1d"
+
+sensor:
+  # === MySmartShunt (Battery Monitor) ===
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Battery Voltage"
+    type: BATTERY_VOLTAGE
+    id: shunt_battery_voltage
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Battery Current"
+    type: BATTERY_CURRENT
+    id: shunt_battery_current
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Battery Power"
+    type: BATTERY_POWER
+    id: shunt_battery_power
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt State of Charge"
+    type: STATE_OF_CHARGE
+    id: shunt_soc
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Consumed Ah"
+    type: CONSUMED_AH
+    id: shunt_consumed_ah
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Time to Go"
+    type: TIME_TO_GO
+    id: shunt_time_to_go
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt AUX Voltage"
+    type: AUX_VOLTAGE
+    id: shunt_aux_voltage
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Temperature"
+    type: TEMPERATURE
+    id: shunt_temperature
+
+  # === MySmartSolar (MPPT Solar Charger) ===
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Battery Voltage"
+    id: mppt_battery_voltage
+    type: BATTERY_VOLTAGE
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Battery Current"
+    id: mppt_battery_current
+    type: BATTERY_CURRENT
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Battery Power"
+    id: mppt_battery_power
+    type: BATTERY_POWER
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT PV Power"
+    id: mppt_pv_power
+    type: PV_POWER
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Yield Today"
+    id: mppt_yield_today
+    type: YIELD_TODAY
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Load Current"
+    type: LOAD_CURRENT
+    id: mppt_load_current
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Load Power"
+    type: LOAD_POWER
+    id: mppt_load_power
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT State of Charge"
+    type: STATE_OF_CHARGE
+    id: mppt_soc
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Temperature"
+    type: TEMPERATURE
+    id: mppt_temperature
+
+  # === MyOrionXS (DC/DC Converter) ===
+  - platform: victron_ble
+    victron_ble_id: MyOrionXS
+    name: "XS Input Voltage"
+    type: INPUT_VOLTAGE
+    id: xs_input_voltage
+  - platform: victron_ble
+    victron_ble_id: MyOrionXS
+    name: "XS Input Current"
+    type: INPUT_CURRENT
+    id: xs_input_current
+  - platform: victron_ble
+    victron_ble_id: MyOrionXS
+    name: "XS Input Power"
+    type: INPUT_POWER
+    id: xs_input_power
+  - platform: victron_ble
+    victron_ble_id: MyOrionXS
+    name: "XS Output Voltage"
+    id: xs_output_voltage
+    type: OUTPUT_VOLTAGE
+  - platform: victron_ble
+    victron_ble_id: MyOrionXS
+    name: "XS Output Current"
+    type: OUTPUT_CURRENT        
+    id: xs_output_current
+  - platform: victron_ble
+    victron_ble_id: MyOrionXS
+    name: "XS Output Power"
+    type: OUTPUT_POWER
+    id: xs_output_power
+
+binary_sensor:
+  # === MySmartShunt (Battery Monitor) ===
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Alarm"
+    type: ALARM
+    id: shunt_alarm
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Charger Error"
+    type: CHARGER_ERROR
+    id: shunt_charger_error
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Device Off"
+    type: DEVICE_STATE_OFF
+    id: shunt_device_off
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Device Fault"
+    type: DEVICE_STATE_FAULT
+    id: shunt_device_fault
+
+  # === MySmartSolar (MPPT Solar Charger) ===
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Alarm"
+    type: ALARM
+    id: mppt_alarm
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Charger Error"
+    id: mppt_charger_error
+    type: CHARGER_ERROR
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Device Off"
+    type: DEVICE_STATE_OFF
+    id: mppt_device_off
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Device Fault"
+    type: DEVICE_STATE_FAULT
+    id: mppt_device_fault
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Bulk Charging"
+    type: DEVICE_STATE_BULK
+    id: mppt_bulk_charging
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Absorption"
+    type: DEVICE_STATE_ABSORPTION
+    id: mppt_absorption
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Float"
+    type: DEVICE_STATE_FLOAT
+    id: mppt_float
+
+  # === MyOrionXS (DC/DC Converter) ===
+  - platform: victron_ble
+    victron_ble_id: MyOrionXS
+    name: "XS Charger Error"
+    id: xs_charger_error
+    type: CHARGER_ERROR
+
+  # === 5SMĚRNÝ JOYSTICK OVLÁDÁNÍ ===
+  # LaskaKit joystick - zapojení všech pinů na GND přes pull-up
+  
+  # DOLEVA = Předchozí stránka
+  - platform: gpio
+    pin:
+      number: $gpio_joystick_left
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    name: "Joystick Left"
+    id: joystick_left
+    on_press:
+      then:
+        - if:
+            condition:
+              lambda: 'return !id(display_update_in_progress);'
+            then:
+              - display.page.show_previous: eink_display
+              - component.update: eink_display  
+              - logger.log: "Joystick: Předchozí stránka"
+
+  # DOPRAVA = Další stránka  
+  - platform: gpio
+    pin:
+      number: $gpio_joystick_right
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    name: "Joystick Right"
+    id: joystick_right
+    on_press:
+      then:
+        - if:
+            condition:
+              lambda: 'return !id(display_update_in_progress);'
+            then:
+              - display.page.show_next: eink_display
+              - component.update: eink_display  
+              - logger.log: "Joystick: Další stránka"
+
+  # CENTER = Wake z deep sleep / Restart cyklu
+  #- platform: gpio
+  #  pin:
+  #    number: $gpio_joystick_center
+  #    mode:
+  #      input: true
+  #      pullup: true
+  #    inverted: true
+  #  name: "Joystick Center"
+  #  id: joystick_center
+  #  on_press:
+  #    then:
+        # Restart celého cyklu (pokud je zařízení vzhůru)
+  #      - logger.log: "Joystick: Restart deep sleep cyklu"
+  #      - script.execute: coordinated_sleep_cycle
+
+  # RST = System reset
+  - platform: gpio
+    pin:
+      number: $gpio_joystick_rst
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    name: "Joystick Reset"
+    id: joystick_reset
+    on_press:
+      then:
+        - logger.log: "Joystick: System reset aktivován"
+        - button.press: restart_button
+
+text_sensor:
+  # === MySmartShunt (Battery Monitor) ===
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Device State"
+    type: DEVICE_STATE
+    id: shunt_device_state
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Alarm Reason"
+    type: ALARM_REASON
+    id: shunt_alarm_reason
+  - platform: victron_ble
+    victron_ble_id: MySmartShunt
+    name: "Shunt Charger Error Text"
+    type: CHARGER_ERROR
+    id: shunt_charger_error_text
+
+  # === MySmartSolar (MPPT Solar Charger) ===
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Device State"
+    type: DEVICE_STATE
+    id: mppt_device_state
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Alarm Reason"
+    type: ALARM_REASON
+    id: mppt_alarm_reason
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Charger Error Text"
+    type: CHARGER_ERROR
+    id: mppt_charger_error_text
+  - platform: victron_ble
+    victron_ble_id: MySmartSolar
+    name: "MPPT Off Reason"
+    type: OFF_REASON
+    id: mppt_off_reason
+
+  # === MyOrionXS (DC/DC Converter) ===
+  - platform: victron_ble
+    victron_ble_id: MyOrionXS
+    name: "XS Charger Error Text"
+    id: xs_charger_error_text
+    type: CHARGER_ERROR
+# === SYSTEM BUTTONS ===
+button:
+  - platform: restart
+    name: "Restart ESP32"
+    id: restart_button
+
+
+
+
+font:
+  - file: "Roboto-Bold.ttf"
+    id: roboto_big
+    size: 28  # Titulek a hlavní hodnoty (velký, dobře čitelný)
+  - file: "Roboto-Bold.ttf"
+    id: roboto
+    size: 16  # Sekce/sloupce
+  - file: "Roboto-Thin.ttf"
+    id: roboto_sm
+    size: 13  # Popisky, doplňkové hodnoty/menší text
+  - file: "materialdesignicons-webfont.ttf"
+    id: mdi
+    size: 18  # Ikony - optimální velikost pro sekce
+    glyphs: [
+      "\U000F0079", # mdi-battery
+      "\U000F0590", # mdi-solar-panel  
+      "\U000F1012", # mdi-transmission-tower
+      "\U000F140A", # mdi-lightning-bolt
+      "\U000F0238", # mdi-gauge
+      "\U000F0425", # mdi-power-plug
+      "\U000F06E8", # mdi-flash
+      "\U000F0A02", # mdi-sine-wave
+      ]
+  - file: "materialdesignicons-webfont.ttf"
+    id: mdi_small
+    size: 14  # Status ikony - optimální pro inverse boxes
+    glyphs: [
+      # Connection status ikony
+      "\U000F0079", # mdi-battery (SmartShunt)
+      "\U000F007A", # mdi-battery-outline (SmartShunt offline)
+
+      "\U000F1A74", # mdi-solar-panel (MPPT)
+      "\U000F010B", # mdi-car (OrionXS)
+      "\U000F010C", # mdi-car-battery (OrionXS)
+
+
+      ] 
+    
+spi:
+  clk_pin: $gpio_display_clk
+  mosi_pin: $gpio_display_mosi    
+
+display:
+  - platform: waveshare_epaper
+    cs_pin: $gpio_display_cs
+    dc_pin: $gpio_display_dc
+    busy_pin: 
+      number: $gpio_display_busy
+      inverted: false
+
+    reset_pin: $gpio_display_reset
+
+    model: gdey042t81 
+    
+    reset_duration: 200ms     # Delší reset pro stabilnější e-paper
+    update_interval: never    # Pouze manuální update ze scriptu
+    rotation: 90°
+    id: eink_display
+    
+    # Nastavení pro optimální e-paper rendering
+    auto_clear_enabled: true   # Enable auto-clear - spolehlivější pro e-paper
+    full_update_every: 5       # Častější full refresh (každých 5 partial updates)
+
+    pages:
+      - id: page1
+        lambda: |-
+          ESP_LOGD("main", "display");
+
+          // === AUTO-CLEAR ENABLED - nemusíme manuálně mazat ===
+
+          // === LAYOUT KONSTANTY ===
+          const int SCREEN_WIDTH = 300;
+          const int SCREEN_HEIGHT = 400;
+          const int MARGIN = 10;
+          const int SECTION_HEIGHT = 28;
+          const int LINE_HEIGHT = 20;
+          // 2-sloupcový layout pro lepší využití místa
+          const int COL1_X = 20;        // Levý sloupec
+          const int COL2_X = 160;       // Pravý sloupec
+
+          // Y pozice sekcí
+          const int TOP_HEADER_Y = 6;
+          const int TOP_HEADER_HEIGHT = 26;  // Status bar hlavička
+          const int HEADER_Y = TOP_HEADER_Y + TOP_HEADER_HEIGHT + 6;
+          const int HEADER_HEIGHT = 60;  // Zmenšeno - jen pro battery gauge a info
+          const int SHUNT_Y = HEADER_Y + HEADER_HEIGHT + 8;
+          const int MPPT_Y = SHUNT_Y + SECTION_HEIGHT + 52;  // 52 = sekce + 2.5 řádky obsahu
+          const int ORION_Y = MPPT_Y + SECTION_HEIGHT + 68;  // 68 = sekce + 3.5 řádky obsahu
+
+          // === VNĚJŠÍ RÁMEČEK ===
+          it.rectangle(0, 0, SCREEN_WIDTH-1, SCREEN_HEIGHT-1, COLOR_ON);
+
+          // === TOP STATUS BAR ===
+          it.filled_rectangle(0, TOP_HEADER_Y, SCREEN_WIDTH, TOP_HEADER_HEIGHT, COLOR_ON);
+
+          // Kontrola připojení jednotlivých zařízení
+          bool shunt_connected = id(shunt_battery_voltage).has_state() && !isnan(id(shunt_battery_voltage).state);
+          bool mppt_connected = id(mppt_battery_voltage).has_state() && !isnan(id(mppt_battery_voltage).state);
+          bool orion_connected = id(xs_input_voltage).has_state() && !isnan(id(xs_input_voltage).state);
+
+          // Connection status ikony vlevo
+          const int icon_size = 16;
+          const int icon_offset = icon_size / 2;
+          int status_y = TOP_HEADER_Y + 5; // Vertikální střed top header
+
+          // SmartShunt (Battery Icon)
+          if (shunt_connected) {
+            it.filled_rectangle(8, status_y, icon_size, icon_size, COLOR_OFF);  // Bílý čtverec
+            it.printf(8 + icon_offset, status_y + icon_offset - 1, id(mdi_small), COLOR_ON, TextAlign::CENTER, "\U000F0079");
+          } else {
+            it.printf(8 + icon_offset, status_y + icon_offset - 1, id(mdi_small), COLOR_OFF, TextAlign::CENTER, "\U000F007A");
+          }
+
+          // MPPT (Solar Panel Icon)
+          if (mppt_connected) {
+            it.filled_rectangle(27, status_y, icon_size, icon_size, COLOR_OFF);  // Bílý čtverec
+            it.printf(27 + icon_offset, status_y + icon_offset - 1, id(mdi_small), COLOR_ON, TextAlign::CENTER, "\U000F1A74");
+          } else {
+            it.printf(27 + icon_offset, status_y + icon_offset - 1, id(mdi_small), COLOR_OFF, TextAlign::CENTER, "\U000F1A74");
+          }
+
+          // OrionXS (DC/DC Icon)
+          if (orion_connected) {
+            it.filled_rectangle(46, status_y, icon_size, icon_size, COLOR_OFF);  // Bílý čtverec
+            it.printf(46 + icon_offset, status_y + icon_offset - 1, id(mdi_small), COLOR_ON, TextAlign::CENTER, "\U000F010B");
+          } else {
+            it.printf(46 + icon_offset, status_y + icon_offset - 1, id(mdi_small), COLOR_OFF, TextAlign::CENTER, "\U000F010B");
+          }
+
+          // Název systému uprostřed + sleep cycle info + joystick indikátor
+          it.printf(SCREEN_WIDTH/2, TOP_HEADER_Y+4, id(roboto), COLOR_OFF, TextAlign::TOP_CENTER, "PROXY #%d [J]", (int)id(sleep_cycles));
+
+          // Čas a datum vpravo
+          auto time = id(sntp_time).now();
+          it.printf(SCREEN_WIDTH-5, TOP_HEADER_Y+4, id(roboto_sm), COLOR_OFF, TextAlign::TOP_RIGHT,
+                   "%02d:%02d  %02d.%02d", time.hour, time.minute, time.day_of_month, time.month);
+
+          // === KONSTANTY PRO BATERII ===
+          const float BATTERY_NOMINAL_CAPACITY = 150.0; // Nominální kapacita v Ah
+
+          // === TESTOVACÍ DATA PRO SMARTSHUNT ===
+          // Při vývoji použijeme testovací hodnoty pro demonstraci chytrých funkcí
+          float test_soc = 49.0;           // State of Charge v %
+          float test_voltage = 13.41;      // Napětí baterie v V
+          float test_current = 15.3;       // Proud baterie v A (kladný = nabíjení)
+          float test_power = 205.0;        // Výkon baterie v W (kladný = nabíjení)
+          float test_consumed_ah = 76.5;   // Spotřebované Ah (větší hodnota pro test)
+          float test_time_to_go = 1680;    // Čas do vybití v minutách (28h pro test formátování)
+
+          // === HORNÍ ČÁST: BATTERY GAUGE + ČAS  ===
+          // Získání dat z senzorů nebo testovacích hodnot
+          float soc = isnan(id(shunt_soc).state) ? test_soc : id(shunt_soc).state;
+          float voltage = isnan(id(shunt_battery_voltage).state) ? test_voltage : id(shunt_battery_voltage).state;
+          float consumed_ah = isnan(id(shunt_consumed_ah).state) ? test_consumed_ah : id(shunt_consumed_ah).state;
+
+          // Battery gauge rozměry
+          const int GAUGE_WIDTH = SCREEN_WIDTH - 2*MARGIN; // 280px
+          const int GAUGE_HEIGHT = HEADER_HEIGHT - 20;     // 40px (bylo 38px)
+          int filled_width = (int)(soc * GAUGE_WIDTH / 100.0);
+
+          // Vykreslení battery gauge
+          it.rectangle(MARGIN, HEADER_Y, GAUGE_WIDTH, GAUGE_HEIGHT, COLOR_ON);
+          it.filled_rectangle(MARGIN, HEADER_Y, filled_width, GAUGE_HEIGHT, COLOR_ON);
+
+          // === INVERZNÍ TEXT V BATTERY GAUGE ===
+          // 1. BÍLÝ text v plné části (černé pozadí)
+          if (filled_width > 0) {
+            it.start_clipping(MARGIN, HEADER_Y, MARGIN + filled_width, HEADER_Y + GAUGE_HEIGHT);
+            it.printf(SCREEN_WIDTH/2, HEADER_Y+11, id(roboto_big), COLOR_OFF, TextAlign::TOP_CENTER, "%.0f%%", soc);
+            it.end_clipping();
+          }
+
+          // 2. ČERNÝ text v prázdné části (bílé pozadí)
+          int empty_start = MARGIN + filled_width;
+          int empty_width = GAUGE_WIDTH - filled_width;
+          if (empty_width > 0) {
+            it.start_clipping(empty_start, HEADER_Y, empty_start + empty_width, HEADER_Y + GAUGE_HEIGHT);
+            it.printf(SCREEN_WIDTH/2, HEADER_Y+11, id(roboto_big), COLOR_ON, TextAlign::TOP_CENTER, "%.0f%%", soc);
+            it.end_clipping();
+          }
+
+          // === INFORMACE POD BATTERY GAUGE ===
+          float remaining_ah = BATTERY_NOMINAL_CAPACITY - consumed_ah;
+          float current_total = isnan(id(shunt_battery_current).state) ? test_current : id(shunt_battery_current).state;
+          float mppt_current_contrib = isnan(id(mppt_battery_current).state) ? 0 : id(mppt_battery_current).state;
+          float orion_current_contrib = isnan(id(xs_output_current).state) ? 0 : id(xs_output_current).state;
+
+          // Chytré zobrazení podle stavu baterie
+          std::string battery_status = "";
+          if (current_total > 0.1) {
+            battery_status = " +"; // Nabíjení
+          } else if (current_total < -0.1) {
+            battery_status = " -"; // Vybíjení
+          } else {
+            battery_status = " ="; // Klid
+          }
+
+          it.printf(SCREEN_WIDTH/2, HEADER_Y+GAUGE_HEIGHT+2, id(roboto_sm), TextAlign::TOP_CENTER,
+                   "%.1fV  %.1f/%.0fAh%s", voltage, remaining_ah, BATTERY_NOMINAL_CAPACITY, battery_status.c_str());
+
+          // === SMART SHUNT SEKCE ===
+          // Error handling pro SmartShunt
+          bool shunt_has_error = isnan(id(shunt_charger_error).state) ? false : id(shunt_charger_error).state;
+          bool shunt_has_alarm = isnan(id(shunt_alarm).state) ? false : id(shunt_alarm).state;
+
+          // Dynamická hlavička s error/alarm indikátorem
+          if (shunt_has_error || shunt_has_alarm) {
+            it.filled_rectangle(0, SHUNT_Y, SCREEN_WIDTH, SECTION_HEIGHT, COLOR_ON);
+            if (shunt_has_alarm) {
+              it.printf(SCREEN_WIDTH-35, SHUNT_Y+4, id(roboto), COLOR_OFF, TextAlign::TOP_LEFT, "ALARM");
+            } else {
+              it.printf(SCREEN_WIDTH-25, SHUNT_Y+4, id(roboto), COLOR_OFF, TextAlign::TOP_LEFT, "ERR!");
+            }
+          } else {
+            it.filled_rectangle(0, SHUNT_Y, SCREEN_WIDTH, SECTION_HEIGHT, COLOR_ON);
+          }
+
+          // Ikona baterie
+          it.printf(5, SHUNT_Y+6, id(mdi), COLOR_OFF, TextAlign::TOP_LEFT, "\U000F0079");
+          it.printf(SCREEN_WIDTH/2, SHUNT_Y+4, id(roboto), COLOR_OFF, TextAlign::TOP_CENTER, "Smart Shunt");
+
+          // Obsah v 2 sloupcích s chytrými jednotkami
+          int y = SHUNT_Y + SECTION_HEIGHT + 4;
+          float current = isnan(id(shunt_battery_current).state) ? test_current : id(shunt_battery_current).state;
+          float power = isnan(id(shunt_battery_power).state) ? test_power : id(shunt_battery_power).state;
+          float time_to_go = isnan(id(shunt_time_to_go).state) ? test_time_to_go : id(shunt_time_to_go).state;
+
+          // Chytré jednotky pro proud a výkon
+          if (abs(current) >= 100) {
+            it.printf(COL1_X, y, id(roboto), TextAlign::TOP_LEFT, "%.0fA", current);
+          } else {
+            it.printf(COL1_X, y, id(roboto), TextAlign::TOP_LEFT, "%.1fA", current);
+          }
+
+          if (abs(power) >= 1000) {
+            it.printf(COL2_X, y, id(roboto), TextAlign::TOP_LEFT, "%.1fkW", power/1000);
+          } else {
+            it.printf(COL2_X, y, id(roboto), TextAlign::TOP_LEFT, "%.0fW", power);
+          }
+
+          y += LINE_HEIGHT;
+          // Time to go a zbývající kapacita
+          if (time_to_go >= 1440) {  // Více než 24 hodin
+            it.printf(COL1_X, y, id(roboto), TextAlign::TOP_LEFT, "TTG: %.0fd", time_to_go/1440);
+          } else if (time_to_go >= 60) {  // Více než hodina
+            it.printf(COL1_X, y, id(roboto), TextAlign::TOP_LEFT, "TTG: %.1fh", time_to_go/60);
+          } else {
+            it.printf(COL1_X, y, id(roboto), TextAlign::TOP_LEFT, "TTG: %.0fmin", time_to_go);
+          }
+          it.printf(COL2_X, y, id(roboto), TextAlign::TOP_LEFT, "%.1fAh left", remaining_ah);
+
+          // === MPPT SEKCE ===
+          // Získání stavu MPPT a error stavů
+          bool mppt_has_error = isnan(id(mppt_charger_error).state) ? false : id(mppt_charger_error).state;
+          std::string mppt_state_text = id(mppt_device_state).has_state() ? id(mppt_device_state).state : "Unknown";
+
+          // Dynamická barva hlavičky podle stavu
+          if (mppt_has_error) {
+            it.filled_rectangle(0, MPPT_Y, SCREEN_WIDTH, SECTION_HEIGHT, COLOR_ON);
+            // Blikající error efekt - jednoduchá implementace
+            it.printf(SCREEN_WIDTH-25, MPPT_Y+4, id(roboto), COLOR_OFF, TextAlign::TOP_LEFT, "ERR!");
+          } else {
+            it.filled_rectangle(0, MPPT_Y, SCREEN_WIDTH, SECTION_HEIGHT, COLOR_ON);
+          }
+
+          // Ikona solárního panelu
+          it.printf(5, MPPT_Y+6, id(mdi), COLOR_OFF, TextAlign::TOP_LEFT, "\U000F0590");
+          it.printf(SCREEN_WIDTH/2, MPPT_Y+4, id(roboto), COLOR_OFF, TextAlign::TOP_CENTER, "MPPT Solar");
+
+          y = MPPT_Y + SECTION_HEIGHT + 4;
+          // Chytré jednotky pro napětí a proud
+          float bat_voltage = isnan(id(mppt_battery_voltage).state)?0:id(mppt_battery_voltage).state;
+          float bat_current = isnan(id(mppt_battery_current).state)?0:id(mppt_battery_current).state;
+
+          it.printf(COL1_X, y, id(roboto), TextAlign::TOP_LEFT, "Bat: %.2fV", bat_voltage);
+          it.printf(COL2_X, y, id(roboto), TextAlign::TOP_LEFT, "%.2fA", bat_current);
+
+          y += LINE_HEIGHT;
+          // Chytré jednotky pro výkon (W vs kW)
+          float pv_power = isnan(id(mppt_pv_power).state)?0:id(mppt_pv_power).state;
+          float load_current = isnan(id(mppt_load_current).state)?0:id(mppt_load_current).state;
+          if (pv_power >= 1000) {
+            it.printf(COL1_X, y, id(roboto), TextAlign::TOP_LEFT, "PV: %.1fkW", pv_power/1000);
+          } else {
+            it.printf(COL1_X, y, id(roboto), TextAlign::TOP_LEFT, "PV: %.0fW", pv_power);
+          }
+          it.printf(COL2_X, y, id(roboto), TextAlign::TOP_LEFT, "Load: %.1fA", load_current);
+
+          y += LINE_HEIGHT;
+          // Stav MPPT + Yield
+          float yield_today = isnan(id(mppt_yield_today).state)?0:id(mppt_yield_today).state;
+          it.printf(COL1_X, y, id(roboto_sm), TextAlign::TOP_LEFT, "State: %s", mppt_state_text.c_str());
+          it.printf(COL2_X, y, id(roboto), TextAlign::TOP_LEFT, "%.2fkWh", yield_today);
+
+          // === ORIONXS SEKCE ===
+          // Error handling pro OrionXS
+          bool orion_has_error = isnan(id(xs_charger_error).state) ? false : id(xs_charger_error).state;
+
+          // Dynamická hlavička s error indikátorem
+          if (orion_has_error) {
+            it.filled_rectangle(0, ORION_Y, SCREEN_WIDTH, SECTION_HEIGHT, COLOR_ON);
+            it.printf(SCREEN_WIDTH-25, ORION_Y+4, id(roboto), COLOR_OFF, TextAlign::TOP_LEFT, "ERR!");
+          } else {
+            it.filled_rectangle(0, ORION_Y, SCREEN_WIDTH, SECTION_HEIGHT, COLOR_ON);
+          }
+
+          // Ikona DC/DC konvertoru
+          it.printf(5, ORION_Y+6, id(mdi), COLOR_OFF, TextAlign::TOP_LEFT, "\U000F1012");
+          it.printf(SCREEN_WIDTH/2, ORION_Y+4, id(roboto), COLOR_OFF, TextAlign::TOP_CENTER, "ORION XS DC/DC");
+
+          y = ORION_Y + SECTION_HEIGHT + 4;
+          // Vstupní parametry
+          float in_voltage = isnan(id(xs_input_voltage).state)?0:id(xs_input_voltage).state;
+          float in_current = isnan(id(xs_input_current).state)?0:id(xs_input_current).state;
+
+          it.printf(COL1_X, y, id(roboto), TextAlign::TOP_LEFT, "In: %.2fV", in_voltage);
+          it.printf(COL2_X, y, id(roboto), TextAlign::TOP_LEFT, "%.2fA", in_current);
+
+          y += LINE_HEIGHT;
+          // Výstupní parametry
+          float out_voltage = isnan(id(xs_output_voltage).state)?0:id(xs_output_voltage).state;
+          float out_current = isnan(id(xs_output_current).state)?0:id(xs_output_current).state;
+          it.printf(COL1_X, y, id(roboto), TextAlign::TOP_LEFT, "Out: %.2fV", out_voltage);
+          it.printf(COL2_X, y, id(roboto), TextAlign::TOP_LEFT, "%.2fA", out_current);
+
+          y += LINE_HEIGHT;
+          // Výkon a účinnost
+          float in_power = isnan(id(xs_input_power).state)?0:id(xs_input_power).state;
+          float out_power = isnan(id(xs_output_power).state)?0:id(xs_output_power).state;
+          float efficiency = (in_power > 0) ? (out_power / in_power * 100) : 0;
+
+          // Chytré jednotky pro výkon
+          if (in_power >= 1000) {
+            it.printf(COL1_X, y, id(roboto), TextAlign::TOP_LEFT, "%.1fkW", in_power/1000);
+          } else {
+            it.printf(COL1_X, y, id(roboto), TextAlign::TOP_LEFT, "%.0fW", in_power);
+          }
+          it.printf(COL2_X, y, id(roboto_sm), TextAlign::TOP_LEFT, "Eff: %.0f%%", efficiency);
+
+          ESP_LOGD("epaper", "Hlavní stránka aktualizována.");
+
+      - id: page2
+        lambda: |-
+          ESP_LOGD("main", "detail display");
+
+          // === ÚPLNÉ VYMAZÁNÍ CELÉ OBRAZOVKY (anti-ghosting) ===
+          it.clear();              // Hardware clear
+          it.fill(COLOR_OFF);      // Software fill bílou
+
+          // === LAYOUT KONSTANTY ===
+          const int SCREEN_WIDTH = 300;
+          const int SCREEN_HEIGHT = 400;
+          const int MARGIN = 10;
+          const int SECTION_HEIGHT = 24;  // Menší sekce pro více obsahu
+          const int LINE_HEIGHT = 18;     // Menší řádkování
+          const int COL1_X = 20;
+          const int COL2_X = 160;
+
+          // Y pozice sekcí (kompaktnější)
+          const int TOP_HEADER_Y = 6;
+          const int TOP_HEADER_HEIGHT = 26;  // Status bar hlavička
+          const int HEADER_Y = TOP_HEADER_Y + TOP_HEADER_HEIGHT + 6;
+          const int TEMP_Y = HEADER_Y + 30;
+          const int POWER_Y = TEMP_Y + 70;
+          const int EFF_Y = POWER_Y + 80;
+          const int SYS_Y = EFF_Y + 80;
+
+          // === VNĚJŠÍ RÁMEČEK ===
+          it.rectangle(0, 0, SCREEN_WIDTH-1, SCREEN_HEIGHT-1, COLOR_ON);
+
+          // === TOP STATUS BAR ===
+          it.filled_rectangle(0, TOP_HEADER_Y, SCREEN_WIDTH, TOP_HEADER_HEIGHT, COLOR_ON);
+
+          // Kontrola připojení jednotlivých zařízení
+          bool shunt_connected = id(shunt_battery_voltage).has_state() && !isnan(id(shunt_battery_voltage).state);
+          bool mppt_connected = id(mppt_battery_voltage).has_state() && !isnan(id(mppt_battery_voltage).state);
+          bool orion_connected = id(xs_input_voltage).has_state() && !isnan(id(xs_input_voltage).state);
+
+          // Connection status ikony vlevo
+          const int icon_size = 16;
+          const int icon_offset = icon_size / 2;
+          int status_y = TOP_HEADER_Y + 5; // Vertikální střed top header
+
+          // SmartShunt (Battery Icon)
+          if (shunt_connected) {
+            it.filled_rectangle(8, status_y, icon_size, icon_size, COLOR_OFF);  // Bílý čtverec
+            it.printf(8 + icon_offset, status_y + icon_offset - 1, id(mdi_small), COLOR_ON, TextAlign::CENTER, "\U000F0079");
+          } else {
+            it.printf(8 + icon_offset, status_y + icon_offset - 1, id(mdi_small), COLOR_OFF, TextAlign::CENTER, "\U000F007A");
+          }
+
+          // MPPT (Solar Panel Icon)
+          if (mppt_connected) {
+            it.filled_rectangle(27, status_y, icon_size, icon_size, COLOR_OFF);  // Bílý čtverec
+            it.printf(27 + icon_offset, status_y + icon_offset - 1, id(mdi_small), COLOR_ON, TextAlign::CENTER, "\U000F1A74");
+          } else {
+            it.printf(27 + icon_offset, status_y + icon_offset - 1, id(mdi_small), COLOR_OFF, TextAlign::CENTER, "\U000F1A74");
+          }
+
+          // OrionXS (DC/DC Icon)
+          if (orion_connected) {
+            it.filled_rectangle(46, status_y, icon_size, icon_size, COLOR_OFF);  // Bílý čtverec
+            it.printf(46 + icon_offset, status_y + icon_offset - 1, id(mdi_small), COLOR_ON, TextAlign::CENTER, "\U000F010B");
+          } else {
+            it.printf(46 + icon_offset, status_y + icon_offset - 1, id(mdi_small), COLOR_OFF, TextAlign::CENTER, "\U000F010B");
+          }
+
+          // Název systému uprostřed + sleep cycle info + joystick indikátor
+          it.printf(SCREEN_WIDTH/2, TOP_HEADER_Y+4, id(roboto), COLOR_OFF, TextAlign::TOP_CENTER, "PROXY #%d [J]", (int)id(sleep_cycles));
+
+          // Čas a datum vpravo
+          auto time = id(sntp_time).now();
+          it.printf(SCREEN_WIDTH-5, TOP_HEADER_Y+4, id(roboto_sm), COLOR_OFF, TextAlign::TOP_RIGHT,
+                   "%02d:%02d (2/2)", time.hour, time.minute);
+
+          // === HEADER - DETAIL VIEW ===
+          it.filled_rectangle(0, HEADER_Y, SCREEN_WIDTH, SECTION_HEIGHT, COLOR_ON);
+          it.printf(5, HEADER_Y+4, id(mdi), COLOR_OFF, TextAlign::TOP_LEFT, "\U000F0238");
+          it.printf(SCREEN_WIDTH/2, HEADER_Y+3, id(roboto), COLOR_OFF, TextAlign::TOP_CENTER, "SYSTEM DIAGNOSTICS");
+
+          // === SEKCE 1: TEPLOTY & DIAGNOSTIKA ===
+          it.filled_rectangle(0, TEMP_Y, SCREEN_WIDTH, SECTION_HEIGHT, COLOR_ON);
+          it.printf(5, TEMP_Y+4, id(mdi), COLOR_OFF, TextAlign::TOP_LEFT, "\U000F140A");
+          it.printf(SCREEN_WIDTH/2, TEMP_Y+3, id(roboto), COLOR_OFF, TextAlign::TOP_CENTER, "TEMPERATURES & STATUS");
+
+          int y = TEMP_Y + SECTION_HEIGHT + 4;
+          // Teploty
+          float shunt_temp = isnan(id(shunt_temperature).state) ? 25.0 : id(shunt_temperature).state;
+          float mppt_temp = isnan(id(mppt_temperature).state) ? 32.0 : id(mppt_temperature).state;
+
+          it.printf(COL1_X, y, id(roboto), TextAlign::TOP_LEFT, "Shunt: %.0f°C", shunt_temp);
+          it.printf(COL2_X, y, id(roboto), TextAlign::TOP_LEFT, "MPPT: %.0f°C", mppt_temp);
+
+          y += LINE_HEIGHT;
+          // AUX napětí a diagnostika
+          float aux_voltage = isnan(id(shunt_aux_voltage).state) ? 12.6 : id(shunt_aux_voltage).state;
+          std::string shunt_state = id(shunt_device_state).has_state() ? id(shunt_device_state).state : "Unknown";
+          it.printf(COL1_X, y, id(roboto), TextAlign::TOP_LEFT, "AUX: %.2fV", aux_voltage);
+          it.printf(COL2_X, y, id(roboto_sm), TextAlign::TOP_LEFT, "State: %s", shunt_state.c_str());
+
+          y += LINE_HEIGHT;
+          // Error stavy
+          bool any_errors = false;
+          std::string error_text = "None";
+          if (!isnan(id(shunt_charger_error).state) && id(shunt_charger_error).state) {
+            error_text = "Shunt Error";
+            any_errors = true;
+          } else if (!isnan(id(mppt_charger_error).state) && id(mppt_charger_error).state) {
+            error_text = "MPPT Error";
+            any_errors = true;
+          } else if (!isnan(id(xs_charger_error).state) && id(xs_charger_error).state) {
+            error_text = "OrionXS Error";
+            any_errors = true;
+          }
+          it.printf(COL1_X, y, id(roboto_sm), TextAlign::TOP_LEFT, "Errors: %s", error_text.c_str());
+
+          // === SEKCE 2: POWER FLOW ANALYSIS ===
+          it.filled_rectangle(0, POWER_Y, SCREEN_WIDTH, SECTION_HEIGHT, COLOR_ON);
+          it.printf(5, POWER_Y+4, id(mdi), COLOR_OFF, TextAlign::TOP_LEFT, "\U000F06E8");
+          it.printf(SCREEN_WIDTH/2, POWER_Y+3, id(roboto), COLOR_OFF, TextAlign::TOP_CENTER, "POWER FLOW ANALYSIS");
+
+          y = POWER_Y + SECTION_HEIGHT + 4;
+          // Power flow výpočty
+          float mppt_to_battery = isnan(id(mppt_battery_current).state) ? 8.2 : id(mppt_battery_current).state;
+          float orion_to_battery = isnan(id(xs_output_current).state) ? 3.1 : id(xs_output_current).state;
+          float load_from_battery = isnan(id(mppt_load_current).state) ? 2.1 : id(mppt_load_current).state;
+          float net_battery = mppt_to_battery + orion_to_battery - load_from_battery;
+
+          it.printf(COL1_X, y, id(roboto_sm), TextAlign::TOP_LEFT, "Solar->Bat: %.1fA", mppt_to_battery);
+          it.printf(COL2_X, y, id(roboto_sm), TextAlign::TOP_LEFT, "DC/DC->Bat: %.1fA", orion_to_battery);
+          y += LINE_HEIGHT;
+
+          it.printf(COL1_X, y, id(roboto_sm), TextAlign::TOP_LEFT, "Load<-Bat: %.1fA", load_from_battery);
+          it.printf(COL2_X, y, id(roboto_sm), TextAlign::TOP_LEFT, "Net: %.1fA", net_battery);
+          y += LINE_HEIGHT;
+
+          // Power totals
+          float total_solar_power = isnan(id(mppt_pv_power).state) ? 125.0 : id(mppt_pv_power).state;
+          float total_load_power = isnan(id(mppt_load_power).state) ? 28.0 : id(mppt_load_power).state;
+
+          it.printf(COL1_X, y, id(roboto), TextAlign::TOP_LEFT, "Solar: %.0fW", total_solar_power);
+          it.printf(COL2_X, y, id(roboto), TextAlign::TOP_LEFT, "Load: %.0fW", total_load_power);
+
+          // === SEKCE 3: EFFICIENCY & PERFORMANCE ===
+          it.filled_rectangle(0, EFF_Y, SCREEN_WIDTH, SECTION_HEIGHT, COLOR_ON);
+          it.printf(5, EFF_Y+4, id(mdi), COLOR_OFF, TextAlign::TOP_LEFT, "\U000F0238");
+          it.printf(SCREEN_WIDTH/2, EFF_Y+3, id(roboto), COLOR_OFF, TextAlign::TOP_CENTER, "EFFICIENCY & PERFORMANCE");
+
+          y = EFF_Y + SECTION_HEIGHT + 4;
+          // Efficiency výpočty
+          float in_power = isnan(id(xs_input_power).state) ? 156.0 : id(xs_input_power).state;
+          float out_power = isnan(id(xs_output_power).state) ? 143.0 : id(xs_output_power).state;
+          float orion_eff = (in_power > 0) ? (out_power / in_power * 100) : 0;
+          float mppt_eff = (total_solar_power > 0) ? (mppt_to_battery * 13.4 / total_solar_power * 100) : 0;
+
+          it.printf(COL1_X, y, id(roboto), TextAlign::TOP_LEFT, "MPPT: %.1f%%", mppt_eff);
+          it.printf(COL2_X, y, id(roboto), TextAlign::TOP_LEFT, "OrionXS: %.1f%%", orion_eff);
+          y += LINE_HEIGHT;
+
+          // Utilization factors
+          float load_factor = (total_load_power > 0 && total_solar_power > 0) ? (total_load_power / total_solar_power * 100) : 0;
+          float pv_utilization = (total_solar_power > 0) ? 68.0 : 0;  // Simulované procento využití PV
+          it.printf(COL1_X, y, id(roboto_sm), TextAlign::TOP_LEFT, "Load Factor: %.0f%%", load_factor);
+          it.printf(COL2_X, y, id(roboto_sm), TextAlign::TOP_LEFT, "PV Util: %.0f%%", pv_utilization);
+          y += LINE_HEIGHT;
+
+          // Today's yields
+          float yield_today = isnan(id(mppt_yield_today).state) ? 12.4 : id(mppt_yield_today).state;
+          float battery_throughput = yield_today * 0.8;  // Odhad kolik prošlo přes baterii
+          it.printf(COL1_X, y, id(roboto), TextAlign::TOP_LEFT, "Yield: %.1fkWh", yield_today);
+          it.printf(COL2_X, y, id(roboto), TextAlign::TOP_LEFT, "Bat: %.1fkWh", battery_throughput);
+
+          // === SEKCE 4: SYSTEM CONFIGURATION ===
+          it.filled_rectangle(0, SYS_Y, SCREEN_WIDTH, SECTION_HEIGHT, COLOR_ON);
+          it.printf(5, SYS_Y+4, id(mdi), COLOR_OFF, TextAlign::TOP_LEFT, "\U000F0425");
+          it.printf(SCREEN_WIDTH/2, SYS_Y+3, id(roboto), COLOR_OFF, TextAlign::TOP_CENTER, "SYSTEM CONFIGURATION");
+
+          y = SYS_Y + SECTION_HEIGHT + 4;
+          // System info
+          it.printf(COL1_X, y, id(roboto_sm), TextAlign::TOP_LEFT, "Battery: 150Ah LiFePO4");
+          it.printf(COL2_X, y, id(roboto_sm), TextAlign::TOP_LEFT, "Nominal: 12V");
+          y += LINE_HEIGHT;
+
+          it.printf(COL1_X, y, id(roboto_sm), TextAlign::TOP_LEFT, "Update: 30s");
+          it.printf(COL2_X, y, id(roboto_sm), TextAlign::TOP_LEFT, "Uptime: %02d:%02d", time.hour, time.minute);
+          y += LINE_HEIGHT;
+          it.printf(COL1_X, y, id(roboto_sm), TextAlign::TOP_LEFT, "Version: 2025.1.1");
+          it.printf(COL2_X, y, id(roboto_sm), TextAlign::TOP_LEFT, "Build: ESPHome");
+
+          ESP_LOGD("epaper", "Detail stránka aktualizována.");
+
+# Automatické přepínání vypnuto - používáme manuální tlačítko
+#interval:
+#  - interval: 30s  
+#    then:
+#      - display.page.show_next: eink_display
+#      - component.update: eink_display
+
+    
+    

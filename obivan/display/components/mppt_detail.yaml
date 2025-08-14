@@ -1,0 +1,32 @@
+# =============================================================================
+# MPPT DETAIL COMPONENT - Detailní informace o MPPT solárním regulátoru
+# Based on bennydiamond/esphome_lvgl_hmi_garage structure
+# =============================================================================
+
+# MPPT detail container
+- obj:
+    id: mppt_detail_container
+    width: 100%
+    height: 350
+    y: 60
+    bg_color: 0x111111
+    bg_opa: COVER
+    radius: 12
+    pad_all: 16
+    border_width: 1
+    border_color: 0x222222
+    widgets:
+      # Nadpis
+      - label:
+          align: TOP_MID
+          y: 8
+          text: "MPPT SOLAR CONTROLLER"
+          text_font: roboto_big
+          text_color: 0xFFFFFF
+          
+      # Placeholder pro budoucí implementaci
+      - label:
+          align: CENTER
+          text: "Detailní informace o MPPT\n(budoucí implementace)"
+          text_font: roboto
+          text_color: 0xCCCCCC

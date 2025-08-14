@@ -1,0 +1,200 @@
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: ESP32S3
+  flash_size: 8MB
+  cpu_frequency: 240MHz
+  framework:
+    type: esp-idf
+    advanced:
+      enable_idf_experimental_features: true
+    sdkconfig_options:
+      COMPILER_OPTIMIZATION_SIZE: y
+      CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
+      CONFIG_ESPTOOLPY_FLASHSIZE_8MB: "y"
+      CONFIG_FREERTOS_HZ: "1000"
+      CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240: y
+      CONFIG_ESPTOOLPY_FLASHMODE_QIO: y
+      CONFIG_ESPTOOLPY_FLASHFREQ_120M: y
+      CONFIG_SPIRAM_MODE_OCT: y
+      CONFIG_IDF_EXPERIMENTAL_FEATURES: y
+      CONFIG_SPIRAM_SPEED_120M: y
+      CONFIG_SPIRAM_FETCH_INSTRUCTIONS: y
+      CONFIG_SPIRAM_RODATA: y
+      CONFIG_ESP32S3_DATA_CACHE_LINE_64B: y
+      CONFIG_COMPILER_OPTIMIZATION_PERF: y
+
+esphome:
+  name: obivan-s7
+  friendly_name: ObiVan-S7
+  min_version: "2025.4.2"
+  platformio_options:
+    build_flags: "-DBOARD_HAS_PSRAM"
+    board_build.arduino.memory_type: qio_opi
+    board_build.flash_mode: dio
+    board_upload.maximum_ram_size: 524288
+
+psram:
+  mode: octal
+  speed: 120MHz
+
+i2c:
+  sda: GPIO08
+  scl: GPIO09
+  scan: True
+  id: bus_a
+
+# Enable logging
+logger:
+  level: DEBUG                # Snížit z DEBUG na INFO
+  logs:
+    esp32_ble_tracker: ERROR  # Omezit BLE logy
+    victron_ble: ERROR        # Omezit Victron logy
+    lvgl: ERROR               # Omezit LVGL logy
+
+
+# Enable Home Assistant API
+#api:
+#  encryption:
+#    key: "7OdsT2VL+zpSZF0dGJcmj3/3t8MsMlETd5qFgJsvwW4="
+
+ota:
+  - platform: esphome
+    password: "243f16dd6b3829c4271dd77b05af91bc"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  power_save_mode: LIGHT   # Úspora energie
+  reboot_timeout: 10min    # Restart při dlouhodobém výpadku
+  output_power: 17dB       # Snížit výkon (výchozí je 20dB)
+
+time:
+  - platform: sntp
+    id: sntp_time
+    timezone: Europe/Prague
+
+
+globals:
+  - id: manual_display_off
+    type: bool
+    initial_value: 'false'
+
+
+
+# Stav pro dvojité klepnutí (pro probuzení podsvitu)
+script:
+  - id: touch_wake
+    then:
+      - delay: 500ms  # Počkat 2 sekundy před probuzením
+      - if:
+          condition:
+            switch.is_off: lcdbacklight
+          then:
+            - switch.turn_on: lcdbacklight
+            - lvgl.resume:
+
+
+# Manuální deep sleep ovládaný z UI (tlačítko v navigaci)
+deep_sleep:
+  id: deep_sleep_ctrl
+
+# Backlight
+# GPIO16 is mapped to RS-485 output port, pin A
+# This GPIO should be wired to the solderpad on the right of the ESP32-S3 module, next to its antenna, below 2 * 0603 ceramic capacitors
+# https://community.home-assistant.io/t/esp32-s3-7inch-capacitive-touch-display-adjust-brightness/771030
+output:
+  - platform: ledc
+    pin: GPIO16
+    id: id_output_backlight_brightness
+    min_power: 0.08
+
+ch422g:
+  - id: ch422g_hub
+
+switch:
+  - platform: restart
+    name: "Restart"
+    id: device_restart
+
+  - platform: safe_mode
+    name: Use Safe Mode
+    id: device_safe_mode
+
+  - platform: gpio
+    id: lcdbacklight
+    name: lcdbacklight
+    pin:
+      ch422g: ch422g_hub
+      number: 2
+      mode:
+        output: true
+      inverted: false
+    restore_mode: ALWAYS_ON
+
+# Touch screen
+touchscreen:
+  platform: gt911
+  address: 0x5D
+  id: my_touchscreen
+  interrupt_pin: 4
+  reset_pin:
+    ch422g: ch422g_hub
+    number: 1
+  on_release:
+    - if:
+        condition:
+          switch.is_off: lcdbacklight
+        then:
+          - script.execute: touch_wake
+
+# Display
+display:
+  - platform: rpi_dpi_rgb
+    id: device_display
+    update_interval: never
+    auto_clear_enabled: false
+    color_order: RGB
+    pclk_frequency: 16MHz
+    dimensions:
+      width: 800
+      height: 480
+    reset_pin:
+      ch422g: ch422g_hub
+      number: 3
+    de_pin:
+      number: 5
+    hsync_pin:
+      number: 46
+      ignore_strapping_warning: true
+    vsync_pin:
+      number: 3
+      ignore_strapping_warning: true
+    pclk_pin: 7
+    pclk_inverted: true
+    hsync_back_porch: 8
+    hsync_front_porch: 8
+    hsync_pulse_width: 4
+    vsync_back_porch: 16
+    vsync_front_porch: 16
+    vsync_pulse_width: 4
+    data_pins:
+      red:
+        - 1 #r3.
+        - 2 #r4.
+        - 42 #r5
+        - 41 #r6
+        - 40 #r7
+      blue:
+        - 14 #b3
+        - 38 #b4
+        - 18 #b5
+        - 17 #b6
+        - 10 #b7
+      green:
+        - 39 #g2
+        - 0 #g3.
+        - 45 #g4
+        - 48 #g5
+        - 47 #g6
+        - 21 #g7
+

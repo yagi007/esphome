@@ -1,0 +1,61 @@
+# =============================================================================
+# DC/DC DETAIL PAGE - Detailní informace o DC/DC měniči (OrionXS)
+# Based on bennydiamond/esphome_lvgl_hmi_garage structure
+# =============================================================================
+
+# LVGL stránka
+lvgl:
+  pages:
+    - id: page_dcdc
+      bg_color: 0x000000  # Jednotné černé pozadí
+      widgets:
+        # HEADER přidán přes packages (modulární)
+
+        # =======================================================
+        # DC/DC DETAIL WIDGET
+        # =======================================================
+        - obj:
+            id: dcdc_detail_container
+            width: 100%
+            height: 350
+            y: 60
+            bg_color: 0x111111
+            bg_opa: COVER
+            radius: 12
+            pad_all: 16
+            border_width: 1
+            border_color: 0x222222
+            widgets:
+              - label:
+                  align: TOP_MID
+                  y: 8
+                  text: "DC/DC CONVERTER (ORIONXS)"
+                  text_font: roboto_big
+                  text_color: 0xFFFFFF
+              - label:
+                  align: CENTER
+                  text: "Detailní informace o DC/DC měniči\n(budoucí implementace)"
+                  text_font: roboto
+                  text_color: 0xCCCCCC
+        
+        # Navigace přidána přes packages (modulární)
+
+packages:
+  header: !include
+    file: ../components/header.yaml
+    vars:
+      page_id: page_dcdc
+      prefix: "dcdc_"
+  navigation: !include
+    file: ../components/navigation.yaml
+    vars:
+      page_id: page_dcdc
+      prefix: "dcdc_"
+      overview_bg: 0x111111
+      overview_text: 0xCCCCCC
+      mppt_bg: 0x111111
+      mppt_text: 0xCCCCCC
+      dcdc_bg: 0x4CAF50
+      dcdc_text: 0xFFFFFF
+      system_bg: 0x111111
+      system_text: 0xCCCCCC
