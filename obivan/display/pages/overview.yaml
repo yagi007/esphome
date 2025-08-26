@@ -8,7 +8,9 @@
 lvgl:
   pages:
     - id: page_overview
-      bg_color: 0x000000  # Jednotné černé pozadí
+      bg_color: 0x000000 # Jednotné černé pozadí
+      scrollbar_mode: "OFF"
+      scrollable: false
       widgets:
         # Jednotné rozhraní: 3 boxy v absolutních pozicích + overlay s linkami
         - obj: #main_container
@@ -279,9 +281,9 @@ lvgl:
                         line_width: 2
                         line_color: 0x444444
                         points:
-                          - x: 216   # pravý okraj solar_card
+                          - x: 216 # pravý okraj solar_card
                             y: 95
-                          - x: 270   # levý okraj battery_main
+                          - x: 270 # levý okraj battery_main
                             y: 95
                     - line:
                         id: flow_dcdc_to_batt
@@ -297,11 +299,11 @@ lvgl:
                         line_width: 2
                         line_color: 0x444444
                         points:
-                          - x: 506   # pravý okraj battery_main
+                          - x: 506 # pravý okraj battery_main
                             y: 168
-                          - x: 560   # levý okraj load_card
+                          - x: 560 # levý okraj load_card
                             y: 168
-                  # Koncové bambulky (cílové uzly)
+                    # Koncové bambulky (cílové uzly)
                     - obj:
                         id: dot_solar_batt
                         x: 266
@@ -336,7 +338,6 @@ lvgl:
 # =============================================================================
 # Navigace přidána přes packages (modulární)
 # =============================================================================
-
 
 # Modulární include headeru (rozšiřuje stránku pomocí !extend)
 packages:

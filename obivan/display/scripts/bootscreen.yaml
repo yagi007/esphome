@@ -1,0 +1,35 @@
+# =============================================================================
+# BOOTSCREEN SCRIPTS - Scripty pro správu bootscreen
+# =============================================================================
+
+script:
+  - id: update_bootscreen_progress
+    then:
+      - lambda: |-
+          // Aktualizuj progress bar a status
+          static int progress = 0;
+          progress += 20;
+          if (progress > 100) progress = 100;
+
+          lv_bar_set_value(id(bootscreen_progress), progress, LV_ANIM_ON);
+
+          // Aktualizuj status text podle progress
+          if (progress < 30) {
+            lv_label_set_text(id(bootscreen_status), "Načítání nastavení...");
+          } else if (progress < 60) {
+            lv_label_set_text(id(bootscreen_status), "Inicializace displeje...");
+          } else if (progress < 90) {
+            lv_label_set_text(id(bootscreen_status), "Připojování k WiFi...");
+          } else {
+            lv_label_set_text(id(bootscreen_status), "Systém připraven!");
+          }
+
+          ESP_LOGI("bootscreen", "Progress: %d%%", progress);
+
+  - id: hide_bootscreen
+    then:
+      - lvgl.page.show: page_overview
+      - delay: 50ms
+      - lvgl.widget.hide: page_bootscreen
+      - delay: 50ms
+      - logger.log: "Bootscreen hidden, showing main UI"

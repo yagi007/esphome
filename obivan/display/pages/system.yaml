@@ -7,37 +7,381 @@
 lvgl:
   pages:
     - id: page_system
-      bg_color: 0x000000  # Jednotné černé pozadí
+      bg_color: 0x000000 # Jednotné černé pozadí
       widgets:
         # HEADER přidán přes packages (modulární)
-
         # =======================================================
-        # SYSTEM INFO WIDGET
+        # SETTINGS CONTAINER
         # =======================================================
         - obj:
-            id: system_info_container
+            id: settings_container
             width: 100%
-            height: 350
+            height: 400
             y: 60
             bg_color: 0x111111
             bg_opa: COVER
             radius: 12
-            pad_all: 16
+            pad_all: 20
             border_width: 1
-            border_color: 0x222222
+            border_color: 0x333333
+            scrollbar_mode: "ON"
+            scrollable: true
             widgets:
+              # Nadpis
               - label:
+                  id: settings_title
                   align: TOP_MID
-                  y: 8
-                  text: "SYSTEM INFORMATION"
+                  y: 0
+                  text: "NASTAVENÍ SYSTÉMU"
                   text_font: roboto_big
                   text_color: 0xFFFFFF
-              - label:
-                  align: CENTER
-                  text: "Systémové informace a nastavení\n(budoucí implementace)"
-                  text_font: roboto
-                  text_color: 0xCCCCCC
-        
+
+              # =======================================================
+              # DEEP SLEEP TIMEOUT SETTING
+              # =======================================================
+              - obj:
+                  id: deep_sleep_setting
+                  width: 95%
+                  height: 60
+                  x: 2%
+                  y: 40
+                  bg_color: 0x222222
+                  radius: 8
+                  pad_all: 8
+                  widgets:
+                    - label:
+                        align: LEFT_MID
+                        x: 10
+                        text: "Deep Sleep (s):"
+                        text_font: roboto
+                        text_color: 0xCCCCCC
+                    - button:
+                        id: deep_sleep_minus
+                        align: RIGHT_MID
+                        x: -120
+                        width: 40
+                        height: 40
+                        bg_color: 0x444444
+                        widgets:
+                          - label:
+                              text: "-"
+                              text_font: roboto_big
+                              text_color: 0xFFFFFF
+                        on_click:
+                          - lambda: |-
+                              int current = id(deep_sleep_timeout);
+                              if (current > 60) {
+                                id(deep_sleep_timeout) = current - 30;
+                                lv_label_set_text(id(deep_sleep_value), str_sprintf("%.0f", (float)id(deep_sleep_timeout)).c_str());
+                              }
+                    - label:
+                        id: deep_sleep_value
+                        align: RIGHT_MID
+                        x: -75
+                        text: !lambda 'return str_sprintf("%.0f", (float)id(deep_sleep_timeout)).c_str();'
+                        text_font: roboto_big
+                        text_color: 0x4CAF50
+                    - button:
+                        id: deep_sleep_plus
+                        align: RIGHT_MID
+                        x: -10
+                        width: 40
+                        height: 40
+                        bg_color: 0x444444
+                        widgets:
+                          - label:
+                              text: "+"
+                              text_font: roboto_big
+                              text_color: 0xFFFFFF
+                        on_click:
+                          - lambda: |-
+                              int current = id(deep_sleep_timeout);
+                              if (current < 3600) {
+                                id(deep_sleep_timeout) = current + 30;
+                                lv_label_set_text(id(deep_sleep_value), str_sprintf("%.0f", (float)id(deep_sleep_timeout)).c_str());
+                              }
+
+              # =======================================================
+              # BLE SCAN INTERVAL SETTING
+              # =======================================================
+              - obj:
+                  id: ble_scan_setting
+                  width: 95%
+                  height: 60
+                  x: 2%
+                  y: 110
+                  bg_color: 0x222222
+                  radius: 8
+                  pad_all: 8
+                  widgets:
+                    - label:
+                        align: LEFT_MID
+                        x: 10
+                        text: "BLE Scan (s) [FIXED]:"
+                        text_font: roboto
+                        text_color: 0xCCCCCC
+                    - button:
+                        id: ble_scan_minus
+                        align: RIGHT_MID
+                        x: -120
+                        width: 40
+                        height: 40
+                        bg_color: 0x444444
+                        widgets:
+                          - label:
+                              text: "-"
+                              text_font: roboto_big
+                              text_color: 0xFFFFFF
+                        on_click:
+                          - lambda: |-
+                              int current = id(ble_scan_interval);
+                              if (current > 2) {
+                                id(ble_scan_interval) = current - 2;
+                                lv_label_set_text(id(ble_scan_value), str_sprintf("%.0f", (float)id(ble_scan_interval)).c_str());
+                              }
+                    - label:
+                        id: ble_scan_value
+                        align: RIGHT_MID
+                        x: -75
+                        text: !lambda 'return str_sprintf("%.0f", (float)id(ble_scan_interval)).c_str();'
+                        text_font: roboto_big
+                        text_color: 0x2196F3
+                    - button:
+                        id: ble_scan_plus
+                        align: RIGHT_MID
+                        x: -10
+                        width: 40
+                        height: 40
+                        bg_color: 0x444444
+                        widgets:
+                          - label:
+                              text: "+"
+                              text_font: roboto_big
+                              text_color: 0xFFFFFF
+                        on_click:
+                          - lambda: |-
+                              int current = id(ble_scan_interval);
+                              if (current < 60) {
+                                id(ble_scan_interval) = current + 2;
+                                lv_label_set_text(id(ble_scan_value), str_sprintf("%.0f", (float)id(ble_scan_interval)).c_str());
+                              }
+
+              # =======================================================
+              # DISPLAY BRIGHTNESS SLIDER
+              # =======================================================
+              - obj:
+                  id: brightness_setting
+                  width: 95%
+                  height: 60
+                  x: 2%
+                  y: 180
+                  bg_color: 0x222222
+                  radius: 8
+                  pad_all: 8
+                  widgets:
+                    - label:
+                        align: TOP_LEFT
+                        x: 10
+                        y: 5
+                        text: "Jas displeje (%):"
+                        text_font: roboto
+                        text_color: 0xCCCCCC
+                    - slider:
+                        id: brightness_slider
+                        align: BOTTOM_MID
+                        y: -5
+                        width: 80%
+                        height: 20
+                        min_value: 10
+                        max_value: 100
+                        value: !lambda "return id(display_brightness);"
+                        bg_color: 0x444444
+                        indicator:
+                          bg_color: 0xFF9800
+                        knob:
+                          bg_color: 0xFFFFFF
+                        on_value:
+                          - lambda: |-
+                              int brightness = (int)x;
+                              id(display_brightness) = brightness;
+                              lv_label_set_text(id(brightness_value), str_sprintf("%d%%", brightness).c_str());
+                              ESP_LOGI("brightness", "Slider changed to: %d%%", brightness);
+
+                              // Aplikuj jas přímo na GPIO16 output
+                              float brightness_float = brightness / 100.0f;
+                              id(id_output_backlight_brightness).set_level(brightness_float);
+
+                              ESP_LOGI("brightness", "Applied brightness: %d%% (%.2f) directly to GPIO16", brightness, brightness_float);
+
+                    - label:
+                        id: brightness_value
+                        align: TOP_RIGHT
+                        x: -10
+                        y: 5
+                        text: !lambda 'return str_sprintf("%d%%", id(display_brightness)).c_str();'
+                        text_font: roboto
+                        text_color: 0xFF9800
+
+              # =======================================================
+              # DISPLAY REFRESH INTERVAL
+              # =======================================================
+              - obj:
+                  id: refresh_setting
+                  width: 95%
+                  height: 60
+                  x: 2%
+                  y: 250
+                  bg_color: 0x222222
+                  radius: 8
+                  pad_all: 8
+                  widgets:
+                    - label:
+                        align: LEFT_MID
+                        x: 10
+                        text: "Refresh (s):"
+                        text_font: roboto
+                        text_color: 0xCCCCCC
+                    - button:
+                        id: refresh_minus
+                        align: RIGHT_MID
+                        x: -120
+                        width: 40
+                        height: 40
+                        bg_color: 0x444444
+                        widgets:
+                          - label:
+                              text: "-"
+                              text_font: roboto_big
+                              text_color: 0xFFFFFF
+                        on_click:
+                          - lambda: |-
+                              int current = id(display_refresh_interval);
+                              if (current > 1) {
+                                id(display_refresh_interval) = current - 1;
+                                lv_label_set_text(id(refresh_value), str_sprintf("%.0f", (float)id(display_refresh_interval)).c_str());
+                              }
+                    - label:
+                        id: refresh_value
+                        align: RIGHT_MID
+                        x: -75
+                        text: !lambda 'return str_sprintf("%.0f", (float)id(display_refresh_interval)).c_str();'
+                        text_font: roboto_big
+                        text_color: 0x9C27B0
+                    - button:
+                        id: refresh_plus
+                        align: RIGHT_MID
+                        x: -10
+                        width: 40
+                        height: 40
+                        bg_color: 0x444444
+                        widgets:
+                          - label:
+                              text: "+"
+                              text_font: roboto_big
+                              text_color: 0xFFFFFF
+                        on_click:
+                          - lambda: |-
+                              int current = id(display_refresh_interval);
+                              if (current < 60) {
+                                id(display_refresh_interval) = current + 1;
+                                lv_label_set_text(id(refresh_value), str_sprintf("%.0f", (float)id(display_refresh_interval)).c_str());
+                              }
+
+              # =======================================================
+              # WIFI TOGGLE
+              # =======================================================
+              - obj:
+                  id: wifi_setting
+                  width: 95%
+                  height: 60
+                  x: 2%
+                  y: 320
+                  bg_color: 0x222222
+                  radius: 8
+                  pad_all: 8
+                  widgets:
+                    - label:
+                        align: LEFT_MID
+                        x: 10
+                        text: "WiFi:"
+                        text_font: roboto
+                        text_color: 0xCCCCCC
+                    - button:
+                        id: wifi_toggle_btn
+                        align: RIGHT_MID
+                        x: -10
+                        width: 120
+                        height: 40
+                        bg_color: 0x4CAF50
+                        radius: 8
+                        widgets:
+                          - label:
+                              id: wifi_btn_label
+                              text: "ZAPNUTO"
+                              text_font: roboto
+                              text_color: 0xFFFFFF
+                        on_click:
+                          - if:
+                              condition:
+                                lambda: "return id(wifi_enabled);"
+                              then:
+                                - wifi.disable:
+                                - lambda: "id(wifi_enabled) = false;"
+                                - lambda: |-
+                                    lv_obj_set_style_bg_color(id(wifi_toggle_btn), lv_color_hex(0xFF5722), LV_PART_MAIN);
+                                    lv_label_set_text(id(wifi_btn_label), "VYPNUTO");
+                                - script.execute: update_wifi_status
+                                - logger.log: "WiFi disabled via button"
+                              else:
+                                - wifi.enable:
+                                - lambda: "id(wifi_enabled) = true;"
+                                - lambda: |-
+                                    lv_obj_set_style_bg_color(id(wifi_toggle_btn), lv_color_hex(0x4CAF50), LV_PART_MAIN);
+                                    lv_label_set_text(id(wifi_btn_label), "ZAPNUTO");
+                                - script.execute: update_wifi_status
+                                - logger.log: "WiFi enabled via button"
+
+              # =======================================================
+              # RESET TO DEFAULTS BUTTON
+              # =======================================================
+              - button:
+                  id: reset_defaults_btn
+                  align: BOTTOM_MID
+                  y: -80
+                  width: 200
+                  height: 40
+                  bg_color: 0xF44336
+                  radius: 8
+                  widgets:
+                    - label:
+                        text: "RESET NA VÝCHOZÍ"
+                        text_font: roboto
+                        text_color: 0xFFFFFF
+                  on_click:
+                    - lambda: |-
+                        // Reset na defaultní hodnoty
+                        id(reset_to_defaults).execute();
+
+                        // Aktualizuj zobrazení
+                        lv_label_set_text(id(deep_sleep_value), str_sprintf("%.0f", (float)id(deep_sleep_timeout)).c_str());
+                        lv_label_set_text(id(ble_scan_value), str_sprintf("%.0f", (float)id(ble_scan_interval)).c_str());
+                        lv_label_set_text(id(brightness_value), str_sprintf("%d%%", id(display_brightness)).c_str());
+                        lv_slider_set_value(id(brightness_slider), (int32_t)id(display_brightness), LV_ANIM_OFF);
+                        lv_label_set_text(id(refresh_value), str_sprintf("%.0f", (float)id(display_refresh_interval)).c_str());
+
+                        // Aktualizuj WiFi toggle button
+                        if (id(wifi_enabled)) {
+                          lv_obj_set_style_bg_color(id(wifi_toggle_btn), lv_color_hex(0x4CAF50), LV_PART_MAIN);
+                          lv_label_set_text(id(wifi_btn_label), "ZAPNUTO");
+                        } else {
+                          lv_obj_set_style_bg_color(id(wifi_toggle_btn), lv_color_hex(0xFF5722), LV_PART_MAIN);
+                          lv_label_set_text(id(wifi_btn_label), "VYPNUTO");
+                        }
+
+                        // Aplikuj nový jas
+                        id(apply_brightness).execute();
+
+                        ESP_LOGI("settings", "Reset to defaults completed");
         # Navigace přidána přes packages (modulární)
 
 packages:

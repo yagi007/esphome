@@ -1,43 +1,43 @@
-  - file: "Roboto-Bold.ttf"
-    id: roboto_big
-    size: 24
-    bpp: 4
-    glyphs:
-      - " !\"#$%&'()*+,-./0123456789:;<=>?@"
-      - "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-      - "abcdefghijklmnopqrstuvwxyz"
-      - "ÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ"
-      - "áčďéěíňóřšťúůýž"
-      - "°‰∞"
+- file: "Roboto-Bold.ttf"
+  id: roboto_big
+  size: 24
+  bpp: 4
+  glyphs:
+    - ' !"#$%&''()*+,-./0123456789:;<=>?@'
+    - "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    - "abcdefghijklmnopqrstuvwxyz"
+    - "ÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ"
+    - "áčďéěíňóřšťúůýž"
+    - "°‰∞"
 
-  - file: "Roboto-Bold.ttf"
-    id: roboto
-    size: 16
-    bpp: 4
-    glyphs:
-      - " !\"#$%&'()*+,-./0123456789:;<=>?@"
-      - "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-      - "abcdefghijklmnopqrstuvwxyz"
-      - "ÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ"
-      - "áčďéěíňóřšťúůýž"
-      - "°‰∞"
+- file: "Roboto-Bold.ttf"
+  id: roboto
+  size: 16
+  bpp: 4
+  glyphs:
+    - ' !"#$%&''()*+,-./0123456789:;<=>?@'
+    - "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    - "abcdefghijklmnopqrstuvwxyz"
+    - "ÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ"
+    - "áčďéěíňóřšťúůýž"
+    - "°‰∞"
 
-  - file: "Roboto-Thin.ttf"
-    id: roboto_sm
-    size: 14
-    bpp: 4
-    glyphs:
-      - " !\"#$%&'()*+,-./0123456789:;<=>?@"
-      - "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-      - "abcdefghijklmnopqrstuvwxyz"
-      - "ÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ"
-      - "áčďéěíňóřšťúůýž"
-      - "°‰∞"
+- file: "Roboto-Thin.ttf"
+  id: roboto_sm
+  size: 14
+  bpp: 4
+  glyphs:
+    - ' !"#$%&''()*+,-./0123456789:;<=>?@'
+    - "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    - "abcdefghijklmnopqrstuvwxyz"
+    - "ÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ"
+    - "áčďéěíňóřšťúůýž"
+    - "°‰∞"
 
-  - file: "materialdesignicons-webfont.ttf"
-    id: mdi
-    size: 24
-    glyphs: [
+- file: "materialdesignicons-webfont.ttf"
+  id: mdi
+  size: 24
+  glyphs: [
       "\U000F0079", # mdi-battery
       "\U000F0080", # mdi-battery-outline
       "\U000F02DC", # mdi-home
@@ -47,15 +47,32 @@
       "\U000F0594", # mdi-weather-night
       "\U000F05A9", # mdi-wifi
       "\U000F0238", # mdi-gauge (system)
-      ]
-  - file: "materialdesignicons-webfont.ttf"
-    id: mdi_small
-    size: 14  # Status ikony - optimální pro inverse boxes
-    glyphs: [
+      "\U000F05AA", # mdi-wifi-off
+      "\U000F05A6", # mdi-wifi-3
+      "\U000F05A7", # mdi-wifi-3
+      "\U000F05A8", # mdi-wifi-4
+      "\U000F091F", # WIFI 1 poor
+      "\U000F0922", # WIFI 2 weak
+      "\U000F0925", # WIFI 3 good
+      "\U000F0928", # WIFI 4 excelent
+      "\U000F092D", # WIFI OFF
+    ]
+- file: "materialdesignicons-webfont.ttf"
+  id: mdi_small
+  size: 14 # Status ikony - optimální pro inverse boxes
+  glyphs: [
       # Connection status ikony
       "\U000F0079", # mdi-battery (SmartShunt)
       "\U000F007A", # mdi-battery-outline (SmartShunt offline)
       "\U000F1A74", # mdi-solar-panel (MPPT)
       "\U000F010B", # mdi-car (OrionXS)
       "\U000F010C", # mdi-car-battery (OrionXS)
-      ]
+      "\U000F05AA", # mdi-wifi-off
+      "\U000F05A6", # mdi-wifi-3
+      "\U000F05A7", # mdi-wifi-3
+      "\U000F05A8", # mdi-wifi-4
+      "\U000F091F", # WIFI 1
+      "\U000F0922", # WIFI 2
+      "\U000F0925", # WIFI 3
+      "\U000F0928", # WIFI 4
+    ]

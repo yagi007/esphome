@@ -39,7 +39,7 @@ lvgl:
                   widgets:
                     - label:
                         align: CENTER
-                        text: "\U000F02DC"  # mdi-home
+                        text: "\U000F02DC" # mdi-home
                         text_font: mdi
                         text_color: ${overview_text}
               - button:
@@ -119,9 +119,10 @@ lvgl:
                           - lvgl.pause:
                           - globals.set:
                               id: manual_display_off
-                              value: 'true'
+                              value: "true"
                           - script.execute: touch_ignore_short
                           - switch.turn_off: lcdbacklight
+                          - light.turn_off: display_backlight_control
                           - delay: 500ms
                         widgets:
                           - label:
@@ -129,7 +130,8 @@ lvgl:
                               text: "\U000F0594"
                               text_font: mdi
                               text_color: ${overview_text}
-                    - button: # sleep
+                    # Debug test button (long press for test, short press for real sleep)
+                    - button: # sleep with debug option
                         id: ${prefix}nav_power_sleep
                         width: 48
                         height: 45
@@ -138,19 +140,15 @@ lvgl:
                         bg_opa: TRANSP
                         radius: 8
                         on_press:
-                          - globals.set:
-                              id: manual_display_off
-                              value: 'true'                        
-                          - switch.turn_off: lcdbacklight
-                          - delay: 200ms
-                          - deep_sleep.enter: deep_sleep_ctrl
+                          - script.execute: prepare_deep_sleep
+                        on_long_press:
+                          - script.execute: simple_deep_sleep_test
                         widgets:
                           - label:
                               align: CENTER
                               text: "\U000F0425"
                               text_font: mdi
                               text_color: ${overview_text}
-
 # =============================================================================
 # NAVIGATION COMPONENT - Moderní tab menu s navigací
 # Inspirováno bennydiamond/esphome_lvgl_hmi_garage

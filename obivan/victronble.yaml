@@ -1,23 +1,21 @@
-
 external_components:
   - source: github://Fabian-Schmidt/esphome-victron_ble
 
 esp32_ble_tracker:
   scan_parameters:
-    # === OPTIMALIZACE PRO DEEP SLEEP A KOORDINACI ===
-    interval: 3000ms        # Delší interval = méně CPU/RAM usage
-    window: 600ms           # Kratší window = úspora energie  
-    active: false           # Passive scan = významná úspora energie
-#  duration: 30s          # Scan jen 30s po probuzení
-    # Po scan_duration se BLE vypne automaticky = úspora RAM
+    # === OPTIMALIZACE PRO DEEP SLEEP A ÚSPORU ENERGIE ===
+    interval: 10000ms # 10 sekund - delší interval pro úsporu energie
+    window: 300ms # Kratší window = významná úspora energie
+    active: false # Passive scan = významná úspora energie
   on_scan_end:
     then:
-      - logger.log: "BLE scan dokončen, spouštím koordinovanou sekvenci..."
-      - delay: 5s
-      # Místo přímého display update spustíme koordinovaný script
-#      - script.execute: coordinated_sleep_cycle
-
-
+      - logger.log: "BLE scan completed, updating data..."
+      - script.execute: update_main_dashboard
+      - delay: 1s
+      # Kontrolovaně vypni BLE po získání dat pro úsporu energie
+      - lambda: |-
+          ESP_LOGI("ble", "Attempting graceful BLE stop after scan completion");
+      - esp32_ble_tracker.stop_scan:
 
 #bluetooth_proxy:
 #  active: true
@@ -25,10 +23,10 @@ esp32_ble_tracker:
 
 victron_ble:
   - id: MySmartShunt
-    mac_address: "dc:61:47:b0:3a:7c"    # PLACEHOLDER - nahradit skutečnou MAC adresou
-    bindkey: "58a7a9dbc1735bb6578f6284f8982122"  # PLACEHOLDER - nahradit skutečným bindkey
+    mac_address: "dc:61:47:b0:3a:7c" # PLACEHOLDER - nahradit skutečnou MAC adresou
+    bindkey: "58a7a9dbc1735bb6578f6284f8982122" # PLACEHOLDER - nahradit skutečným bindkey
   - id: MyOrionXS
-    mac_address: "C4:65:3B:FE:E1:D3"    
+    mac_address: "C4:65:3B:FE:E1:D3"
     bindkey: "72bb827c1da9cbc0b4fa1622fceaad08"
   - id: MySmartSolar
     mac_address: "EC:54:E2:A1:52:FD"
@@ -148,7 +146,7 @@ sensor:
   - platform: victron_ble
     victron_ble_id: MyOrionXS
     name: "XS Output Current"
-    type: OUTPUT_CURRENT        
+    type: OUTPUT_CURRENT
     id: xs_output_current
   - platform: victron_ble
     victron_ble_id: MyOrionXS
@@ -221,8 +219,7 @@ binary_sensor:
     victron_ble_id: MyOrionXS
     name: "XS Charger Error"
     id: xs_charger_error
-    type: CHARGER_ERROR    
-
+    type: CHARGER_ERROR
 
 text_sensor:
   # === MySmartShunt (Battery Monitor) ===
@@ -269,4 +266,4 @@ text_sensor:
     victron_ble_id: MyOrionXS
     name: "XS Charger Error Text"
     id: xs_charger_error_text
-    type: CHARGER_ERROR    
+    type: CHARGER_ERROR

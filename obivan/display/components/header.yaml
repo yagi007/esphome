@@ -19,6 +19,7 @@ lvgl:
             border_color: "${header_border_color}"
             border_side: BOTTOM
             scrollbar_mode: "OFF"
+            scrollable: false
             widgets:
               - label:
                   id: ${prefix}header_time
@@ -46,7 +47,7 @@ lvgl:
                     - label:
                         id: ${prefix}status_shunt
                         align: LEFT_MID
-                   #     x: -40
+                        #     x: -40
                         text: "\U000F0080"
                         text_font: mdi
                         text_color: "${icon_color_off}"
@@ -59,7 +60,7 @@ lvgl:
                     - label:
                         id: ${prefix}status_orion
                         align: RIGHT_MID
-                    #    x: 40
+                        #    x: 40
                         text: "\U000F010B"
                         text_font: mdi
                         text_color: "${icon_color_off}"
@@ -72,7 +73,7 @@ lvgl:
                   text_color: "${accent_blue}"
               - label:
                   id: ${prefix}header_date
-                  align: RIGHT_MID  
+                  align: RIGHT_MID
                   x: -12
                   text: "01.12"
                   text_font: roboto

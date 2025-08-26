@@ -8,6 +8,39 @@ substitutions:
   icon_color_on: 0x4CAF50
   icon_color_off: 0xAAAAAA
 
+  # Defaultní hodnoty nastavení
+  default_deep_sleep_timeout: "300" # 5 minut
+  default_ble_scan_interval: "10" # 10 sekund - lepší pro aktualizace
+  default_display_brightness: "80" # 80%
+  default_display_refresh_interval: "10" # 1 sekunda
+
+# Perzistentní globální proměnné
+globals:
+  - id: deep_sleep_timeout
+    type: int
+    restore_value: true
+    initial_value: ${default_deep_sleep_timeout}
+
+  - id: ble_scan_interval
+    type: int
+    restore_value: true
+    initial_value: ${default_ble_scan_interval}
+
+  - id: display_brightness
+    type: int
+    restore_value: true
+    initial_value: ${default_display_brightness}
+
+  - id: display_refresh_interval
+    type: int
+    restore_value: true
+    initial_value: ${default_display_refresh_interval}
+
+  - id: wifi_enabled
+    type: bool
+    restore_value: true
+    initial_value: "true"
+
 packages:
   hardware: !include obivan/hardware.yaml
   victronble: !include obivan/victronble.yaml

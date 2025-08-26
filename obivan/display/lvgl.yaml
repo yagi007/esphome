@@ -8,21 +8,38 @@ font: !include fonts.yaml
 
 # Packages pro modulární stránky - podle bennydiamond struktury
 packages:
+  page_bootscreen: !include pages/bootscreen.yaml
   page_overview: !include pages/overview.yaml
   page_mppt: !include pages/mppt.yaml
   page_dcdc: !include pages/dcdc.yaml
   page_system: !include pages/system.yaml
+  bootscreen_scripts: !include scripts/bootscreen.yaml
 
 # Časovač pro aktualizace (šetrný s baterií)
 interval:
-  - interval: 30s  # Častější aktualizace pro responzivní UI
+  - interval: 30s
+    # Častější aktualizace pro responzivní UI
     then:
       - script.execute: update_main_dashboard
-      
-  - interval: 60s  # Méně časté aktualizace data náročných operací
+
+  - interval: 60s # Méně časté aktualizace data náročných operací
     then:
       - script.execute: update_datetime
 
+  - interval: 120s # Řízené BLE skenování každé 2 minuty pro úsporu energie
+    then:
+      - if:
+          condition:
+            and:
+              - switch.is_on: lcdbacklight
+              - lambda: "return !id(manual_display_off);"
+          then:
+            - lambda: |-
+                ESP_LOGI("ble", "Checking BLE status before restart...");
+            - esp32_ble_tracker.start_scan:
+            - logger.log: "BLE scan restarted - display is active"
+          else:
+            - logger.log: "Skipping BLE scan - display is off for power saving"
 
 # Scripts pro aktualizace dat
 script:
@@ -32,7 +49,7 @@ script:
       - lvgl.label.update:
           id: header_time
           text: !lambda |-
-            auto now = id(sntp_time).now();            
+            auto now = id(sntp_time).now();
             static char time_buf[16];
             snprintf(time_buf, sizeof(time_buf), "%02d:%02d", now.hour, now.minute);
             return time_buf;
@@ -110,6 +127,93 @@ script:
           text_color: !lambda |-
             bool connected = id(xs_input_voltage).has_state() && !isnan(id(xs_input_voltage).state);
             return connected ? lv_color_hex(${icon_color_on}) : lv_color_hex(${icon_color_off});
+
+  - id: update_wifi_status
+    then:
+      # Overview page WiFi status
+      - lvgl.label.update:
+          id: wifi_status
+          text: !lambda |-
+            if (!id(wifi_enabled)) return "\U000F05AA"; // WiFi off icon
+            if (!id(wifi_rssi).has_state()) return "\U000F05AA"; // WiFi off - no signal data
+            float rssi = id(wifi_rssi).state;
+            if (rssi > -50) return "\U000F0928"; // Excellent signal
+            if (rssi > -60) return "\U000F0925"; // Good signal
+            if (rssi > -70) return "\U000F0922"; // Fair signal
+            if (rssi > -80) return "\U000F091F"; // Poor signal
+            return "\U000F092D"; // Weak signal
+          text_color: !lambda |-
+            if (!id(wifi_enabled)) return lv_color_hex(${icon_color_off});
+            if (!id(wifi_rssi).has_state()) return lv_color_hex(${icon_color_off});
+            float rssi = id(wifi_rssi).state;
+            if (rssi > -50) return lv_color_hex(0x4CAF50); // Green - excellent
+            if (rssi > -60) return lv_color_hex(0x8BC34A); // Light green - good
+            if (rssi > -70) return lv_color_hex(0xFF9800); // Orange - fair
+            if (rssi > -80) return lv_color_hex(0xFF0000); // RED - poor
+            return lv_color_hex(0xFF5722); // Red - weak
+      # MPPT page WiFi status
+      - lvgl.label.update:
+          id: mppt_wifi_status
+          text: !lambda |-
+            if (!id(wifi_enabled)) return "\U000F05AA";
+            if (!id(wifi_rssi).has_state()) return "\U000F05AA";
+            float rssi = id(wifi_rssi).state;
+            if (rssi > -50) return "\U000F0928"; // Excellent signal
+            if (rssi > -60) return "\U000F0925"; // Good signal
+            if (rssi > -70) return "\U000F0922"; // Fair signal
+            if (rssi > -80) return "\U000F091F"; // Poor signal
+            return "\U000F092D"; // Weak signal
+          text_color: !lambda |-
+            if (!id(wifi_enabled)) return lv_color_hex(${icon_color_off});
+            if (!id(wifi_rssi).has_state()) return lv_color_hex(${icon_color_off});
+            float rssi = id(wifi_rssi).state;
+            if (rssi > -50) return lv_color_hex(0x4CAF50);
+            if (rssi > -60) return lv_color_hex(0x8BC34A);
+            if (rssi > -70) return lv_color_hex(0xFF9800);
+            if (rssi > -70) return lv_color_hex(0xFF0000);
+            return lv_color_hex(0xFF5722);
+      # DC/DC page WiFi status
+      - lvgl.label.update:
+          id: dcdc_wifi_status
+          text: !lambda |-
+            if (!id(wifi_enabled)) return "\U000F05AA";
+            if (!id(wifi_rssi).has_state()) return "\U000F05AA";
+            float rssi = id(wifi_rssi).state;
+            if (rssi > -50) return "\U000F0928"; // Excellent signal
+            if (rssi > -60) return "\U000F0925"; // Good signal
+            if (rssi > -70) return "\U000F0922"; // Fair signal
+            if (rssi > -80) return "\U000F091F"; // Poor signal
+            return "\U000F092D"; // Weak signal
+          text_color: !lambda |-
+            if (!id(wifi_enabled)) return lv_color_hex(${icon_color_off});
+            if (!id(wifi_rssi).has_state()) return lv_color_hex(${icon_color_off});
+            float rssi = id(wifi_rssi).state;
+            if (rssi > -50) return lv_color_hex(0x4CAF50);
+            if (rssi > -60) return lv_color_hex(0x8BC34A);
+            if (rssi > -70) return lv_color_hex(0xFF9800);
+            if (rssi > -70) return lv_color_hex(0xFF0000);
+            return lv_color_hex(0xFF5722);
+      # System page WiFi status
+      - lvgl.label.update:
+          id: system_wifi_status
+          text: !lambda |-
+            if (!id(wifi_enabled)) return "\U000F05AA";
+            if (!id(wifi_rssi).has_state()) return "\U000F05AA";
+            float rssi = id(wifi_rssi).state;
+            if (rssi > -50) return "\U000F0928"; // Excellent signal
+            if (rssi > -60) return "\U000F0925"; // Good signal
+            if (rssi > -70) return "\U000F0922"; // Fair signal
+            if (rssi > -80) return "\U000F091F"; // Poor signal
+            return "\U000F092D"; // Weak signal
+          text_color: !lambda |-
+            if (!id(wifi_enabled)) return lv_color_hex(${icon_color_off});
+            if (!id(wifi_rssi).has_state()) return lv_color_hex(${icon_color_off});
+            float rssi = id(wifi_rssi).state;
+            if (rssi > -50) return lv_color_hex(0x4CAF50);
+            if (rssi > -60) return lv_color_hex(0x8BC34A);
+            if (rssi > -70) return lv_color_hex(0xFF9800);
+            if (rssi > -80) return lv_color_hex(0xFF0000); // RED - poor
+            return lv_color_hex(0xFF5722);
 
   - id: update_battery_data
     then:
@@ -335,6 +439,7 @@ script:
       - script.execute: update_dcdc_data
       - script.execute: update_load_data
       - script.execute: update_flows
+      - script.execute: update_wifi_status
       # Wake display if LVGL paused (optional UX tweak)
       # - if:
       #     condition: lvgl.is_paused
