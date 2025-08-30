@@ -32,30 +32,17 @@ esphome:
     board_build.arduino.memory_type: qio_opi
     board_build.flash_mode: dio
     board_upload.maximum_ram_size: 524288
+
   on_boot:
-    priority: -100
-    then:
-      # Inicializace služeb po probuzení z deep sleep
-      - wifi.enable:
-      # BLE tracker se spouští automaticky při inicializaci komponenty
-      - switch.turn_on: lcdbacklight
-      - light.turn_on: display_backlight_control
-      - lvgl.resume:
-      - lvgl.page.show: page_bootscreen
-      - script.execute: update_bootscreen_progress
-      - script.execute: init_system_values
-      - delay: 1s
-      - script.execute: update_bootscreen_progress
-      - delay: 1s
-      - script.execute: update_bootscreen_progress
-      - delay: 1s
-      - script.execute: update_bootscreen_progress
-      - delay: 1s
-      - script.execute: update_bootscreen_progress
-      - script.execute: apply_brightness
-      - delay: 1s
-      - script.execute: hide_bootscreen
-      - logger.log: "System initialized with saved brightness and services restored"
+    - priority: 600 # Po hardware init
+      then:
+        # Spustit boot timeout parallel s boot sekvencí
+        - script.execute: boot_with_timeout
+
+    - priority: -10
+      then:
+        - script.execute: boot_with_timeout
+        - logger.log: "System initialized with saved brightness and services restored"
 
 psram:
   mode: octal
@@ -121,26 +108,32 @@ globals:
   - id: ignore_touch
     type: bool
     initial_value: "false"
+  - id: power_debug_mode
+    type: bool
+    initial_value: "false" # Disabled for compilation issues
 
 # Stav pro dvojité klepnutí (pro probuzení podsvitu)
 script:
   - id: touch_wake
     then:
-      - delay: 500ms # Počkat 2 sekundy před probuzením
+      - delay: 500ms
       - if:
           condition:
             and:
               - switch.is_off: lcdbacklight
               - light.is_off: display_backlight_control
           then:
-            - switch.turn_on: lcdbacklight
-            - light.turn_on: display_backlight_control
-            - lvgl.resume:
-            # Restart BLE scanning after wake up (with check)
+            - logger.log: "Touch wake - reinitializing CH422G"
             - lambda: |-
-                ESP_LOGI("touch_wake", "Display woke up - restarting BLE scan...");
-            - esp32_ble_tracker.start_scan:
-            - logger.log: "Display woke up - BLE scan restarted"
+                // Reinitializuj CH422G po probuzení
+                auto *ch422g = id(ch422g_hub);
+                if (ch422g != nullptr) {
+                  ESP_LOGI("touch_wake", "Reinitializing CH422G after wake");
+                }
+            - script.execute: screen_on_mode
+            - lambda: |-
+                id(manual_display_off) = false;
+            - logger.log: "Display turned on by touch"
 
   - id: touch_ignore_short
     then:
@@ -188,81 +181,205 @@ script:
 
   - id: prepare_deep_sleep
     then:
-      - logger.log: "=== PREPARE_DEEP_SLEEP SCRIPT STARTED ==="
+      - logger.log: "=== DEEP SLEEP PREPARATION STARTED ==="
 
-      - logger.log: "Step 1: Disabling WiFi..."
-      - wifi.disable:
-      - delay: 500ms # Longer delay for WiFi to properly disconnect
-      - logger.log: "Step 2: WiFi disabled successfully"
-
-      - logger.log: "Step 3: Stopping BLE scanning (with check)..."
-      - lambda: |-
-          // Only try to stop BLE if it's actually running
-          ESP_LOGI("ble", "Attempting to stop BLE scan gracefully...");
-      - esp32_ble_tracker.stop_scan:
-      - delay: 500ms
-      - logger.log: "Step 4: BLE scanning stop attempted"
-
-      - logger.log: "Step 5: Turning off display backlight (GPIO16)..."
+      # 1. Nejdřív UI cleanup
+      - logger.log: "Step 1: UI cleanup"
+      - lvgl.pause:
       - light.turn_off: display_backlight_control
-      - delay: 200ms
-      - logger.log: "Step 6: Display backlight turned off successfully"
-
-      - logger.log: "Step 7: Turning off CH422G backlight switch..."
       - switch.turn_off: lcdbacklight
       - delay: 200ms
-      - logger.log: "Step 8: CH422G backlight switch turned off successfully"
 
-      - logger.log: "Step 9: Checking LVGL status and pausing if active..."
-      - if:
-          condition:
-            not:
-              - lvgl.is_paused
-          then:
-            - logger.log: "Step 9a: LVGL is active, pausing now..."
-            - lvgl.pause:
-            - delay: 1s
-            - logger.log: "Step 9b: LVGL paused successfully"
-          else:
-            - logger.log: "Step 9c: LVGL is already paused, skipping"
-      - logger.log: "Step 10: LVGL status check completed"
+      # 2. Vypni WiFi čistě
+      - logger.log: "Step 2: WiFi cleanup"
+      - wifi.disable:
+      - delay: 1s # Důležité - čekat až se WiFi úplně vypne
 
-      - logger.log: "Step 11: Final system cleanup..."
-      - delay: 2s # Wait for all systems to stabilize
-      - logger.log: "Step 12: All systems prepared for deep sleep"
-      - logger.log: "Step 13: ENTERING DEEP SLEEP NOW!"
-      - delay: 1s # Ensure this final log message is printed
+      # 3. Vypni BLE
+      - logger.log: "Step 3: BLE cleanup"
+      - esp32_ble_tracker.stop_scan:
+      - delay: 500ms
+
+      # 4. **KLÍČOVÉ: Vypni I2C periferie**
+      - logger.log: "Step 4: I2C peripherals cleanup"
+      - lambda: |-
+          // Reset CH422G do low power mode
+          ESP_LOGI("deep_sleep", "Shutting down CH422G expander...");
+
+          // Graceful shutdown CH422G expanderu
+          auto *ch422g = id(ch422g_hub);
+          if (ch422g != nullptr) {
+            // Nastav všechny piny jako input pro minimální spotřebu
+            ch422g->digital_write(1, false);  // Reset pin touchscreen
+            ch422g->digital_write(2, false);  // LCD backlight
+            ch422g->digital_write(3, false);  // Display reset
+            ESP_LOGI("deep_sleep", "CH422G pins set to low power state");
+          }
+
+          ESP_LOGI("deep_sleep", "I2C peripherals prepared for deep sleep");
+
+      # 5. **Nastav GPIO piny do low power**
+      - logger.log: "Step 5: GPIO cleanup"
+      - lambda: |-
+          // Nastav všechny nepotřebné piny na INPUT s pullup disabled
+          gpio_set_direction((gpio_num_t)8, GPIO_MODE_INPUT);   // I2C SDA
+          gpio_set_direction((gpio_num_t)9, GPIO_MODE_INPUT);   // I2C SCL
+          gpio_set_direction((gpio_num_t)16, GPIO_MODE_INPUT);  // Backlight
+          // Disable internal pull-ups/downs where not needed
+          gpio_pullup_dis((gpio_num_t)8);
+          gpio_pulldown_dis((gpio_num_t)8);
+          gpio_pullup_dis((gpio_num_t)9);
+          gpio_pulldown_dis((gpio_num_t)9);
+          ESP_LOGI("deep_sleep", "GPIO pins configured for low power");
+
+      # 6. CPU frequency reduction
+      - logger.log: "Step 6: CPU frequency reduction"
+      - lambda: |-
+          // Note: CPU frequency reduction for deep sleep
+          ESP_LOGI("deep_sleep", "Preparing for deep sleep - CPU freq would be reduced");
+
+      - delay: 1s
+      - logger.log: "Step 7: ENTERING DEEP SLEEP"
+      - logger.log: "=== DEEP SLEEP DEBUG: Target consumption 10-50µA ==="
       - deep_sleep.enter: deep_sleep_ctrl
 
-  - id: test_deep_sleep_preparation
+  # Nový screen-off optimalizovaný script
+  - id: screen_off_mode
     then:
-      - logger.log: "=== TEST_DEEP_SLEEP_PREPARATION SCRIPT STARTED ==="
-      - logger.log: "Test 1: WiFi disable test..."
-      - wifi.disable:
-      - delay: 500ms
-      - logger.log: "Test 2: WiFi enable test..."
-      - wifi.enable:
-      - delay: 500ms
-      - logger.log: "Test 3: BLE stop scan test..."
-      - esp32_ble_tracker.stop_scan:
-      - delay: 500ms
-      - logger.log: "Test 4: BLE start scan test (with check)..."
-      - lambda: |-
-          ESP_LOGI("test", "Testing BLE restart...");
-      - esp32_ble_tracker.start_scan:
-      - delay: 500ms
-      - logger.log: "Test 5: Display backlight test..."
+      - logger.log: "=== SCREEN OFF MODE ==="
+
+      # 1. UI vypnout
+      - lvgl.pause:
+          show_snow: false # Žádný snow efekt
       - light.turn_off: display_backlight_control
-      - delay: 500ms
-      - light.turn_on: display_backlight_control
-      - delay: 500ms
-      - logger.log: "Test 6: CH422G switch test..."
       - switch.turn_off: lcdbacklight
-      - delay: 500ms
+
+      # 2. CPU frequency dolů
+      - lambda: |-
+          ESP_LOGI("screen_off", "Screen off mode - CPU optimization active");
+
+      # 2.5. CH422G low power (ale nechej funkční pro wake-up)
+      - lambda: |-
+          auto *ch422g = id(ch422g_hub);
+          if (ch422g != nullptr) {
+            // Vypni jen nepotřebné piny, touchscreen nech funkční
+            ch422g->digital_write(2, false);  // LCD backlight OFF
+            ESP_LOGI("screen_off", "CH422G set to screen-off mode");
+          }
+
+      # 3. Disable BLE scanning temporarily
+      - esp32_ble_tracker.stop_scan:
+
+      # WiFi necháme běžet pro connectivity
+      - logger.log: "=== SCREEN OFF DEBUG: Target consumption 50-80mA ==="
+      - logger.log: "Screen off mode activated - WiFi ON, BLE OFF, Display OFF"
+
+  # Screen-on script pro návrat ze screen-off
+  - id: screen_on_mode
+    then:
+      - logger.log: "=== SCREEN ON MODE ==="
+
+      # 1. CPU frequency zpět
+      - lambda: |-
+          ESP_LOGI("screen_on", "Screen on mode - full performance active");
+
+      # 1.5. I2C bus reinitialization
+      # I2C bus stabilization delay
+      - delay: 100ms
+      - lambda: |-
+          ESP_LOGI("screen_on", "Reinitializing I2C bus and peripherals...");
+
+          // Reinicializuj CH422G expander
+          auto *ch422g = id(ch422g_hub);
+          if (ch422g != nullptr) {
+            // Nastav piny zpět do funkčního stavu
+            ch422g->digital_write(2, true);  // LCD backlight ON
+            ESP_LOGI("screen_on", "CH422G reinitialized successfully");
+          }
+      # Additional delay for I2C recovery if needed
+      - delay: 200ms
+
+      # 2. UI zapnout
       - switch.turn_on: lcdbacklight
-      - delay: 500ms
-      - logger.log: "=== TEST_DEEP_SLEEP_PREPARATION SCRIPT COMPLETED ==="
-      - logger.log: "All tests passed - deep sleep preparation should work correctly"
+      - light.turn_on: display_backlight_control
+      - lvgl.resume:
+
+      # 3. BLE scanning zpět
+      - esp32_ble_tracker.start_scan:
+
+      - logger.log: "=== SCREEN ON DEBUG: Target consumption 150-200mA ==="
+      - logger.log: "Screen on mode activated - WiFi ON, BLE ON, Display ON"
+
+  # Boot s WiFi timeoutem
+  - id: boot_with_timeout
+    then:
+      - logger.log: "=== BOOT SEQUENCE WITH TIMEOUT ==="
+
+      # Základní UI setup
+      - switch.turn_on: lcdbacklight
+      - light.turn_on: display_backlight_control
+      - lvgl.resume:
+      - lvgl.page.show: page_bootscreen
+      - script.execute: init_system_values
+
+      # Start WiFi connection attempt
+      - logger.log: "Starting WiFi connection..."
+      - wifi.enable:
+
+      # Boot progress s WiFi čekáním
+      - script.execute: update_bootscreen_progress
+      - delay: 1s
+      - script.execute: update_bootscreen_progress
+      - delay: 3s # Čekáme na WiFi
+      - script.execute: update_bootscreen_progress
+      - delay: 5s # Celkem 9 sekund na WiFi
+
+      - if:
+          condition:
+            wifi.connected:
+          then:
+            - logger.log: "WiFi connected successfully"
+            - script.execute: continue_normal_boot
+          else:
+            - logger.log: "WiFi timeout - continuing in offline mode"
+            - script.execute: continue_boot_offline
+
+  - id: continue_boot_offline
+    then:
+      - logger.log: "=== BOOTING IN OFFLINE MODE ==="
+
+      # Dokončit boot bez WiFi závislostí
+      - script.execute: update_bootscreen_progress
+      - delay: 1s
+      - script.execute: update_bootscreen_progress
+      - script.execute: apply_brightness
+      - delay: 1s
+      - script.execute: hide_bootscreen
+
+      # Označit WiFi jako nedostupnou v UI
+      - lambda: |-
+          ESP_LOGW("boot", "System started in offline mode");
+          id(wifi_enabled) = false;
+
+      - logger.log: "Offline boot sequence completed"
+
+  - id: continue_normal_boot
+    then:
+      - logger.log: "=== COMPLETING NORMAL BOOT ==="
+
+      # Dokončit normální boot sekvenci
+      - script.execute: update_bootscreen_progress
+      - delay: 1s
+      - script.execute: update_bootscreen_progress
+      - script.execute: apply_brightness
+      - delay: 1s
+      - script.execute: hide_bootscreen
+
+      - lambda: |-
+          ESP_LOGI("boot", "System started successfully with WiFi");
+          id(wifi_enabled) = true;
+
+      - logger.log: "Normal boot sequence completed"
 
   - id: restore_log_levels
     then:
@@ -281,39 +398,6 @@ script:
       - logger.log: "=== LOG LEVELS RESTORE COMPLETED ==="
       - logger.log: "Restart the device to apply the log level changes"
 
-  - id: monitor_ble_status
-    then:
-      - logger.log: "=== BLE STATUS MONITOR ==="
-      - lambda: |-
-          ESP_LOGI("ble_monitor", "Checking BLE tracker status...");
-          // Log current BLE state for debugging
-      - delay: 1s
-      - logger.log: "BLE status check: Attempting controlled restart..."
-      - esp32_ble_tracker.stop_scan:
-      - delay: 2s
-      - logger.log: "BLE stopped, waiting for restart..."
-      - esp32_ble_tracker.start_scan:
-      - delay: 1s
-      - logger.log: "=== BLE STATUS MONITOR COMPLETED ==="
-
-  - id: simple_deep_sleep_test
-    then:
-      - logger.log: "=== SIMPLE DEEP SLEEP TEST STARTED ==="
-      - logger.log: "Action 1: Simple delay test..."
-      - delay: 1s
-      - logger.log: "Action 2: Trying WiFi disable..."
-      - wifi.disable:
-      - logger.log: "Action 3: WiFi disabled successfully"
-      - delay: 1s
-      - logger.log: "Action 4: Trying BLE stop..."
-      - esp32_ble_tracker.stop_scan:
-      - logger.log: "Action 5: BLE stopped successfully"
-      - delay: 1s
-      - logger.log: "Action 6: Testing deep sleep entry..."
-      - logger.log: "FINAL: About to enter deep sleep in 3 seconds..."
-      - delay: 3s
-      - deep_sleep.enter: deep_sleep_ctrl
-
   - id: init_system_values
     then:
       - lambda: |-
@@ -326,19 +410,6 @@ script:
           ESP_LOGI("system", "display_refresh_interval: %d", id(display_refresh_interval));
           ESP_LOGI("system", "=== END SYSTEM VALUES ===");
           ESP_LOGI("system", "=== INIT_SYSTEM_VALUES SCRIPT COMPLETED ===");
-
-          // Test GPIO16 backlight
-          ESP_LOGI("backlight", "Testing GPIO16 backlight output...");
-          id(id_output_backlight_brightness).set_level(0.5f);
-          delay(1000);
-          id(id_output_backlight_brightness).set_level(0.0f);
-          delay(500);
-          id(id_output_backlight_brightness).set_level(1.0f);
-          ESP_LOGI("backlight", "GPIO16 test completed");
-
-          // Inicializuj UI komponenty s aktuálními hodnotami
-          // Tyto komponenty se inicializují po vytvoření LVGL stránky
-          delay(3000); // Počkat na vytvoření UI
 
           // Inicializuj brightness slider a hodnotu
           // Tyto komponenty se inicializují po vytvoření LVGL stránky
@@ -361,24 +432,39 @@ script:
 
           ESP_LOGI("system", "UI values initialized including WiFi toggle button");
 
-#esp32_touch:
-#  setup_mode: false
+#  # Nový screen-off optimalizovaný script
+#  - id: screen_off_mode
+#    then:
+#      - logger.log: "=== SCREEN OFF MODE ==="
+#
+#      # 1. UI vypnout
+#      - lvgl.pause:
+#          show_snow: false # Žádný snow efekt
+#      - light.turn_off: display_backlight_control
+#      - switch.turn_off: lcdbacklight
+#
+#      # 2. CPU frequency dolů
+#      - lambda: |-
+#          setCpuFrequencyMhz(80);  // Sníž z 240MHz na 80MHz
+#          ESP_LOGI("screen_off", "CPU frequency reduced to 80MHz");
+#
+#      # 3. Disable BLE scanning temporarily
+#      - esp32_ble_tracker.stop_scan:
+#
+#      # WiFi necháme běžet pro connectivity
+#
+#      - logger.log: "Screen off mode activated - ~50-80mA expected"
 
-#binary_sensor:
-#  - platform: esp32_touch
-#    name: "Touch Wakeup Button"
-#    pin: GPIO4
-#    threshold: 1000 # citlivost pro běžné detekce
-#    wakeup_threshold: 1200 # citlivost pro probuzení ze spánku
+# GPIO22 test - úplně volný pin, není v žádné Waveshare pin mapě
+# GPIO15 má hardware problémy (osciluje), GPIO6 možná není RTC capable
+# GPIO22 by měl být dostupný a RTC capable
 
-# Wake-up pomocí GPIO15 (RS485 TXD pin - volný pro wake-up) - ZATÍM VYPNUTO PRO TEST
+# Deep sleep s GPIO22 wake up tlačítkem (volný pin)
 deep_sleep:
   id: deep_sleep_ctrl
-  touch_wakeup: true
-
-#   wakeup_pin: GPIO15 # Externí tlačítko pro probuzení (RS485 TXD pin)
-#   wakeup_pin_mode: INVERT_WAKEUP # Probuzení při stisknutí (LOW)
-#   sleep_duration: 12h # Maximální doba spánku jako záloha
+  wakeup_pin: GPIO6 # GPIO22 není použitý nikde, měl by být RTC capable
+  wakeup_pin_mode: INVERT_WAKEUP # Probuzení při LOW (stisk tlačítka na GND)
+  sleep_duration: 12h # Maximální doba spánku jako záloha
 
 # Backlight
 # GPIO16 is mapped to RS-485 output port, pin A
@@ -402,6 +488,8 @@ light:
 
 ch422g:
   - id: ch422g_hub
+    # Konfigurace pro low-power režim
+    i2c_id: bus_a
 
 switch:
   - platform: restart
@@ -440,24 +528,12 @@ touchscreen:
             - light.is_off: display_backlight_control
             - lambda: "return !id(ignore_touch);"
         then:
-          - if:
-              condition:
-                lambda: "return id(manual_display_off);"
-              then:
-                - globals.set:
-                    id: manual_display_off
-                    value: "false"
-                - switch.turn_on: lcdbacklight
-                - light.turn_on: display_backlight_control
-                - lvgl.resume:
-                # Restart BLE scanning after wake up (with check)
-                - lambda: |-
-                    ESP_LOGI("touch_wake", "Restarting BLE scanner after wake up...");
-                - esp32_ble_tracker.start_scan:
-                - wifi.enable:
-                - logger.log: "Woke up from deep sleep, restarting services"
-              else:
-                - script.execute: touch_wake
+          - logger.log: "Touch detected - waking up screen"
+          - script.execute: screen_on_mode
+          - globals.set:
+              id: manual_display_off
+              value: "false"
+          - logger.log: "Screen activated by touch"
 
 # Display
 display:

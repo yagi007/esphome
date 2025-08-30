@@ -41,6 +41,30 @@ interval:
           else:
             - logger.log: "Skipping BLE scan - display is off for power saving"
 
+# LVGL idle timeouts pro automatické screen-off a deep sleep
+lvgl:
+  on_idle:
+    - timeout: 30s # Screen off po 30 sekundách nečinnosti
+      then:
+        - logger.log: "LVGL idle 30s - turning off screen"
+        - script.execute: screen_off_mode
+        - globals.set:
+            id: manual_display_off
+            value: "true"
+
+    - timeout: !lambda "return id(deep_sleep_timeout) * 1000;" # Konfigurovateľný deep sleep timeout
+      then:
+        - if:
+            condition:
+              lambda: "return id(deep_sleep_timeout) > 0;"
+            then:
+              - logger.log:
+                  format: "LVGL idle %ds - preparing deep sleep"
+                  args: ["id(deep_sleep_timeout)"]
+              - script.execute: prepare_deep_sleep
+            else:
+              - logger.log: "Deep sleep disabled - staying in screen off mode"
+
 # Scripts pro aktualizace dat
 script:
   - id: update_datetime

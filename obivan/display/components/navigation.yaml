@@ -141,8 +141,8 @@ lvgl:
                         radius: 8
                         on_press:
                           - script.execute: prepare_deep_sleep
-                        on_long_press:
-                          - script.execute: simple_deep_sleep_test
+                        #on_long_press:
+                        #  - script.execute: simple_deep_sleep_test
                         widgets:
                           - label:
                               align: CENTER
