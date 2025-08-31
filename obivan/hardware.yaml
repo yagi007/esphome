@@ -14,7 +14,7 @@ esp32:
       enable_idf_experimental_features: true
     sdkconfig_options:
       COMPILER_OPTIMIZATION_SIZE: y
-      CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
+      CONFIG_ESP32S3_DATA_CACHE_32KB: "y"
       CONFIG_ESPTOOLPY_FLASHSIZE_8MB: "y"
       CONFIG_FREERTOS_HZ: "1000"
       CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240: y
@@ -28,6 +28,23 @@ esp32:
       CONFIG_FREERTOS_USE_TICKLESS_IDLE: y
       CONFIG_PM_DFS_INIT_AUTO: y
       CONFIG_PM_PROFILING: y
+
+      # WiFi memory optimalizace pro řešení ESP_ERR_NO_MEM problému
+      CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER_NUM: "8"
+      CONFIG_ESP_WIFI_RX_BUFFER_NUM: "8"
+      CONFIG_ESP_WIFI_STATIC_TX_BUFFER_NUM: "4"
+
+      CONFIG_ESP_WIFI_TX_BUFFER_TYPE: "0"
+      CONFIG_ESP_WIFI_MGMT_SBUF_NUM: "8"
+      CONFIG_ESP_WIFI_AMPDU_TX_ENABLED: n
+      CONFIG_ESP_WIFI_AMPDU_RX_ENABLED: n
+      CONFIG_ESP_WIFI_AMSDU_TX_ENABLED: n
+      CONFIG_ESP_WIFI_SOFTAP_BEACON_MAX_LEN: "256"
+      CONFIG_ESP_WIFI_NVS_ENABLED: y
+
+      # Memory management optimalizace
+      CONFIG_MT_SBUF_NUM: "32"
+      CONFIG_ESP_WIFI_DEBUG_LOG_ENABLE: y
       # WiFi power save enhancements
       CONFIG_ESP_WIFI_PS_MAX_MODEM: y
       CONFIG_ESP_WIFI_PS_MODEM: y
@@ -54,15 +71,12 @@ esphome:
             ESP_LOGI("boot", "=== EARLY WIFI CONTROL DEBUG ===");
             ESP_LOGI("boot", "Priority 200: Globals should be restored from NVS now");
             ESP_LOGI("boot", "wifi_enabled current value: %s", id(wifi_enabled) ? "TRUE" : "FALSE");
-            ESP_LOGI("boot", "wifi_enabled initial_value in config: TRUE");
-            ESP_LOGI("boot", "If current != initial, then NVS was successfully loaded");
+
 
             if (!id(wifi_enabled)) {
               ESP_LOGI("boot", "DECISION: WiFi was disabled in previous session - disabling immediately");
-              ESP_LOGI("boot", "This should prevent connection attempts during boot");
             } else {
               ESP_LOGI("boot", "DECISION: WiFi was enabled in previous session - allowing auto-start");
-              ESP_LOGI("boot", "Normal WiFi boot sequence will proceed");
             }
             ESP_LOGI("boot", "=== END EARLY WIFI CONTROL DEBUG ===");
         - if:

@@ -6,14 +6,15 @@
 # System Logger Configuration
 
 logger:
-  level: DEBUG
+  level: INFO
   logs:
     esp32_ble_tracker: ERROR
     victron_ble: ERROR
     lvgl: ERROR
-    esp-idf: WARN
-    wifi: INFO
-    esp32_touch: INFO
+    esp-idf: ERROR
+    wifi: WARN
+    esp32_touch: WARN
+    component: ERROR
 
 # Global System Variables
 globals:

@@ -4,18 +4,29 @@
 # =========================================
 
 wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
-  power_save_mode: LIGHT # Úspora energie (NONE/LIGHT/HIGH)
-  # HIGH mode saves more power but may impact connectivity
-  passive_scan: true
+  networks:
+    - ssid: !secret wifi_ssid
+      password: !secret wifi_password
+
+    - ssid: !secret wifi2_ssid
+      password: !secret wifi2_password
+
+  # Diagnostické nastavení pro řešení Auth Expired problému
+  power_save_mode: LIGHT # Vypnuto pro diagnostiku
+  passive_scan: true # Aktivní scan pro lepší detekci
+  #fast_connect: false # Pomalejší ale spolehlivější připojení
+  output_power: 17dB # Maximální vysílací výkon
+
+  # Explicitní autentifikační metoda
+  #auth_mode: WPA2_PSK
+
   #manual_ip:
   #  static_ip: 192.168.4.26
   #  gateway: 192.168.4.1
   #  subnet: 255.255.252.0
-  output_power: 17dB
+  #output_power: 17dB
 
-# MDNS Discovery (disabled for power saving)
+  # MDNS Discovery (disabled for power saving)
 mdns:
   disabled: true
 

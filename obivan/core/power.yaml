@@ -74,9 +74,6 @@ script:
 
       - delay: 1s
       - logger.log: "Step 7: ENTERING DEEP SLEEP"
-      - logger.log: "=== DEEP SLEEP DEBUG: Target consumption 10-50µA ==="
-      - logger.log: "POWER DEBUG: WiFi=OFF, BLE=OFF, Display=OFF, CH422G=LOW_POWER, GPIO=INPUT"
-      - logger.log: "POWER DEBUG: All major power consumers should be OFF now"
       - deep_sleep.enter: deep_sleep_ctrl
 
   # Screen OFF mode for power saving
@@ -97,7 +94,7 @@ script:
             ch422g->digital_write(3, false);  // Reset display controller
             ESP_LOGI("display_debug", "Display controller reset to low power");
           }
-      - delay: 2s
+
       - logger.log: "MEASURE NOW: display NATVRDO OFF"
 
       # 3. CPU load reduction - use task delays instead of frequency scaling
@@ -186,19 +183,12 @@ script:
       - esp32_ble_tracker.stop_scan:
       - delay: 500ms
       - lambda: |-
-          ESP_LOGI("ble_debug", "BLE STOP: BLE tracker should be stopped now");
           ESP_LOGI("ble_debug", "BLE STOP: Checking if BLE scanner is actually stopped...");
 
       # Final power optimization status
       - logger.log: "=== SCREEN OFF DEBUG: Target consumption 50-80mA ==="
-      - logger.log: "POWER DEBUG: WiFi=OPTIMIZED (~20mA saved), BLE=STOPPED (~40mA saved), Display=OFF (~80mA saved)"
-      - logger.log: "POWER DEBUG: CH422G=PARTIAL_OFF, Intervals=PAUSED, LVGL=PAUSED"
       - lambda: |-
           ESP_LOGI("ble_debug", "SCREEN OFF COMPLETE: BLE should be completely stopped now");
-          ESP_LOGI("ble_debug", "SCREEN OFF COMPLETE: No BLE scanning should occur until screen wake");
-      - logger.log: "Aggressive power saving ON - measuring consumption in 5 seconds..."
-      - delay: 5s
-      - logger.log: "MEASURE NOW: Expected 50-80mA total consumption (check if BLE is really OFF)"
 
   # Screen ON mode - restore from power saving
   - id: screen_on_mode
@@ -300,7 +290,3 @@ script:
 
       # Final status
       - logger.log: "=== SCREEN ON COMPLETE ==="
-      - logger.log: "POWER DEBUG: All systems restored to normal operation"
-      - logger.log: "POWER DEBUG: Expected consumption 120-140mA"
-      - delay: 2s
-      - logger.log: "Screen ON mode completed - system fully operational"

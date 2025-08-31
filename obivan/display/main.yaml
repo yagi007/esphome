@@ -398,23 +398,39 @@ script:
       - lvgl.label.update:
           id: load_power
           text: !lambda |-
-            float w = id(mppt_load_power).has_state() ? id(mppt_load_power).state : 0.0;
+            // Celkový přísun energie ze zdrojů
+            float solar_power = id(mppt_pv_power).has_state() ? id(mppt_pv_power).state : 0.0;
+            float dcdc_power = id(xs_output_power).has_state() ? id(xs_output_power).state : 0.0;
+            // Co skutečně jde do baterie (pozitivní = nabíjení, negativní = vybíjení)
+            float battery_power = id(shunt_battery_power).has_state() ? id(shunt_battery_power).state : 0.0;
+            // Skutečná spotřeba = zdroje - to co jde do baterie
+            float load_power = solar_power + dcdc_power - battery_power;
             static char buf[16];
-            if (w >= 1000) snprintf(buf, sizeof(buf), "%.1fkW", w/1000);
-            else snprintf(buf, sizeof(buf), "%.0fW", w);
+            if (load_power >= 1000) snprintf(buf, sizeof(buf), "%.1fkW", load_power/1000);
+            else snprintf(buf, sizeof(buf), "%.0fW", load_power);
             return buf;
       - lvgl.label.update:
           id: load_current
           text: !lambda |-
-            float a = id(mppt_load_current).has_state() ? id(mppt_load_current).state : 0.0;
+            // Celkový přísun proudu ze zdrojů
+            float solar_current = id(mppt_battery_current).has_state() ? id(mppt_battery_current).state : 0.0;
+            float dcdc_current = id(xs_output_current).has_state() ? id(xs_output_current).state : 0.0;
+            // Co skutečně jde do baterie
+            float battery_current = id(shunt_battery_current).has_state() ? id(shunt_battery_current).state : 0.0;
+            // Skutečná spotřeba proudu = zdroje - to co jde do baterie
+            float load_current = solar_current + dcdc_current - battery_current;
             static char buf[16];
-            snprintf(buf, sizeof(buf), "%.1fA <", a);
+            snprintf(buf, sizeof(buf), "%.1fA <", load_current);
             return buf;
       - lvgl.label.update:
           id: load_daily
           text: !lambda |-
-            float w = id(mppt_load_power).has_state() ? id(mppt_load_power).state : 0.0;
-            float daily_estimate = (w * 24) / 1000.0;
+            // Použití optimalizovaného výpočtu pro denní odhad
+            float solar_power = id(mppt_pv_power).has_state() ? id(mppt_pv_power).state : 0.0;
+            float dcdc_power = id(xs_output_power).has_state() ? id(xs_output_power).state : 0.0;
+            float battery_power = id(shunt_battery_power).has_state() ? id(shunt_battery_power).state : 0.0;
+            float load_power = solar_power + dcdc_power - battery_power;
+            float daily_estimate = (load_power * 24) / 1000.0;
             static char buf[16];
             snprintf(buf, sizeof(buf), "%.1fkWh", daily_estimate);
             return buf;

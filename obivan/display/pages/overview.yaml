@@ -198,7 +198,7 @@ lvgl:
                         text_font: roboto
                         text_color: 0xFFFFFF
                     - label:
-                        id: load_current
+                        id: battery_current
                         align: BOTTOM_RIGHT
                         x: -10
                         y: -34
@@ -248,21 +248,21 @@ lvgl:
                         text_font: roboto
                         text_color: 0xFFFFFF
                     - label:
-                        id: battery_power
+                        id: load_power
                         align: LEFT_MID
                         y: -10
                         text: "0W"
                         text_font: roboto_big
                         text_color: 0x9C27B0
                     - label:
-                        id: battery_current #  load_current
+                        id: load_current #  load_current
                         align: LEFT_MID
                         y: 15
                         text: "0.0A <"
                         text_font: roboto
                         text_color: 0xFF5722
                     - label:
-                        id: load_power # load_daily
+                        id: battery_power # load_daily
                         align: BOTTOM_RIGHT
                         y: -6
                         text: "0.0kWh"

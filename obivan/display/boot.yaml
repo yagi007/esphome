@@ -29,7 +29,9 @@ script:
       - script.execute: update_bootscreen_progress
       - delay: 1s
       - script.execute: update_bootscreen_progress
-      - delay: 3s
+      - delay: 5s
+      - script.execute: update_bootscreen_progress
+      - delay: 8s
       - script.execute: update_bootscreen_progress
       - delay: 5s
 
@@ -57,8 +59,8 @@ script:
       - script.execute: hide_bootscreen
 
       - lambda: |-
-          ESP_LOGW("boot", "System started in offline mode");
-          id(wifi_enabled) = false;
+          ESP_LOGW("boot", "System started in offline mode - WiFi will keep trying to connect");
+          // Necháváme wifi_enabled = true pro další pokusy o připojení
 
       - logger.log: "Boot sequence completed (offline mode)"
 
