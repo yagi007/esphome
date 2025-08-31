@@ -1,0 +1,510 @@
+# =============================================================================
+# SYSTEM INFO PAGE - Systémové informace a nastavení
+# Moderní layout s flex rozložením a minimálními okraji
+# =============================================================================
+
+# LVGL stránka
+lvgl:
+  pages:
+    - id: page_settings
+      bg_color: 0x000000 # Jednotné černé pozadí
+      on_swipe_left:
+        - lvgl.page.show: page_overview
+      on_swipe_right:
+        - lvgl.page.show: page_dcdc
+      widgets:
+        # HEADER přidán přes packages (modulární)
+
+        # =======================================================
+        # MAIN SETTINGS CONTAINER - minimální paddingy
+        # =======================================================
+        - obj:
+            id: settings_container
+            width: 100%
+            height: 370
+            y: 50
+            bg_color: 0x000000
+            bg_opa: TRANSP
+            border_width: 0
+            pad_all: 8
+            scrollbar_mode: "AUTO"
+            scrollable: true
+            widgets:
+              # =======================================================
+              # BRIGHTNESS SECTION - přes celou šířku
+              # =======================================================
+              - obj:
+                  id: brightness_section
+                  width: 100%
+                  height: 80
+                  y: 0
+                  bg_color: 0x000000
+                  bg_opa: TRANSP
+                  border_width: 0
+                  border_side: BOTTOM
+                  border_color: 0x333333
+                  pad_all: 12
+                  widgets:
+                    - label:
+                        align: TOP_LEFT
+                        x: 0
+                        y: 0
+                        text: "Jas displeje"
+                        text_font: roboto
+                        text_color: 0xFFFFFF
+                    - slider:
+                        id: brightness_slider
+                        align: BOTTOM_MID
+                        y: -8
+                        width: 85%
+                        height: 20
+                        min_value: 10
+                        max_value: 100
+                        value: !lambda "return id(display_brightness);"
+                        gesture_bubble: false
+                        bg_color: 0x333333
+                        indicator:
+                          bg_color: 0xFF9800
+                        knob:
+                          bg_color: 0xFFFFFF
+                        on_value:
+                          - lambda: |-
+                              int brightness = (int)x;
+                              id(display_brightness) = brightness;
+                              lv_label_set_text(id(brightness_value), str_sprintf("%d%%", brightness).c_str());
+                              ESP_LOGI("brightness", "Slider changed to: %d%%", brightness);
+                              float brightness_float = brightness / 100.0f;
+                              id(id_output_backlight_brightness).set_level(brightness_float);
+                              ESP_LOGI("brightness", "Applied brightness: %d%% (%.2f) directly to GPIO16", brightness, brightness_float);
+                    - label:
+                        id: brightness_value
+                        align: TOP_RIGHT
+                        x: 0
+                        y: 0
+                        text: !lambda 'return str_sprintf("%d%%", id(display_brightness));'
+                        text_font: roboto
+                        text_color: 0xFF9800
+
+              # =======================================================
+              # FLEX CONTAINER PRO 2 SLOUPCE
+              # =======================================================
+              - obj:
+                  id: settings_flex_container
+                  width: 100%
+                  height: 220
+                  y: 90
+                  bg_color: 0x000000
+                  bg_opa: TRANSP
+                  border_width: 0
+                  pad_all: 0
+                  layout:
+                    type: flex
+                    flex_flow: row
+                    flex_align_main: space_evenly
+                    flex_align_cross: start
+                    flex_align_track: start
+                  widgets:
+                    # =======================================================
+                    # LEVÝ SLOUPEC
+                    # =======================================================
+                    - obj:
+                        id: left_column
+                        width: 48%
+                        height: 100%
+                        bg_color: 0x000000
+                        bg_opa: TRANSP
+                        border_width: 0
+                        pad_all: 4
+                        widgets:
+                          # Deep Sleep nastavení
+                          - obj:
+                              id: deep_sleep_item
+                              width: 100%
+                              height: 55
+                              y: 0
+                              bg_color: 0x000000
+                              bg_opa: TRANSP
+                              border_width: 0
+                              border_side: BOTTOM
+                              border_color: 0x333333
+                              pad_all: 8
+                              layout:
+                                type: flex
+                                flex_flow: row
+                                flex_align_main: space_between
+                                flex_align_cross: center
+                              widgets:
+                                - label:
+                                    text: "Deep Sleep"
+                                    text_font: roboto
+                                    text_color: 0xFFFFFF
+                                    flex_grow: 1
+                                - obj:
+                                    width: 130
+                                    height: 35
+                                    bg_opa: TRANSP
+                                    border_width: 0
+                                    pad_all: 1
+                                    layout:
+                                      type: flex
+                                      flex_flow: row
+                                      flex_align_main: space_between
+                                      flex_align_cross: center
+                                    widgets:
+                                      - button:
+                                          id: deep_sleep_minus
+                                          width: 32
+                                          height: 32
+                                          bg_color: 0x444444
+                                          bg_opa: COVER
+                                          radius: 6
+                                          pad_all: 0
+                                          border_width: 0
+                                          widgets:
+                                            - label:
+                                                align: CENTER
+                                                text: "-"
+                                                text_font: roboto_big
+                                                text_color: 0xFFFFFF
+                                          on_click:
+                                            - lambda: |-
+                                                if (id(deep_sleep_timeout) > 60) {
+                                                  id(deep_sleep_timeout) -= 30;
+                                                  lv_label_set_text(id(deep_sleep_value), str_sprintf("%.0fmin", (float)id(deep_sleep_timeout)/60.0).c_str());
+                                                }
+                                      - label:
+                                          id: deep_sleep_value
+                                          text: !lambda 'return str_sprintf("%.0fmin", (float)id(deep_sleep_timeout)/60.0);'
+                                          text_font: roboto
+                                          text_color: 0x4CAF50
+                                          flex_grow: 1
+                                      - button:
+                                          id: deep_sleep_plus
+                                          width: 32
+                                          height: 32
+                                          bg_color: 0x444444
+                                          bg_opa: COVER
+                                          radius: 6
+                                          pad_all: 0
+                                          border_width: 0
+                                          widgets:
+                                            - label:
+                                                align: CENTER
+                                                text: "+"
+                                                text_font: roboto_big
+                                                text_color: 0xFFFFFF
+                                          on_click:
+                                            - lambda: |-
+                                                if (id(deep_sleep_timeout) < 3600) {
+                                                  id(deep_sleep_timeout) += 30;
+                                                  lv_label_set_text(id(deep_sleep_value), str_sprintf("%.0fmin", (float)id(deep_sleep_timeout)/60.0).c_str());
+                                                }
+
+                          # BLE Scan nastavení
+                          - obj:
+                              id: ble_scan_item
+                              width: 100%
+                              height: 55
+                              y: 55
+                              bg_color: 0x000000
+                              bg_opa: TRANSP
+                              border_width: 0
+                              border_side: BOTTOM
+                              border_color: 0x333333
+                              pad_all: 8
+                              layout:
+                                type: flex
+                                flex_flow: row
+                                flex_align_main: space_between
+                                flex_align_cross: center
+                              widgets:
+                                - label:
+                                    text: "BLE Scan"
+                                    text_font: roboto
+                                    text_color: 0xFFFFFF
+                                    flex_grow: 1
+                                - obj:
+                                    width: 130
+                                    height: 35
+                                    bg_opa: TRANSP
+                                    border_width: 0
+                                    pad_all: 1
+                                    layout:
+                                      type: flex
+                                      flex_flow: row
+                                      flex_align_main: space_between
+                                      flex_align_cross: center
+                                    widgets:
+                                      - button:
+                                          id: ble_scan_minus
+                                          width: 32
+                                          height: 32
+                                          bg_color: 0x444444
+                                          bg_opa: COVER
+                                          radius: 6
+                                          pad_all: 0
+                                          border_width: 0
+                                          widgets:
+                                            - label:
+                                                align: CENTER
+                                                text: "-"
+                                                text_font: roboto_big
+                                                text_color: 0xFFFFFF
+                                          on_click:
+                                            - lambda: |-
+                                                if (id(ble_scan_interval) > 10) {
+                                                  id(ble_scan_interval) -= 5;
+                                                  lv_label_set_text(id(ble_scan_value), str_sprintf("%ds", id(ble_scan_interval)).c_str());
+                                                }
+                                      - label:
+                                          id: ble_scan_value
+                                          text: !lambda 'return str_sprintf("%ds", id(ble_scan_interval));'
+                                          text_font: roboto
+                                          text_color: 0x2196F3
+                                          flex_grow: 1
+                                      - button:
+                                          id: ble_scan_plus
+                                          width: 32
+                                          height: 32
+                                          bg_color: 0x444444
+                                          bg_opa: COVER
+                                          radius: 6
+                                          pad_all: 0
+                                          border_width: 0
+                                          widgets:
+                                            - label:
+                                                align: CENTER
+                                                text: "+"
+                                                text_font: roboto_big
+                                                text_color: 0xFFFFFF
+                                          on_click:
+                                            - lambda: |-
+                                                if (id(ble_scan_interval) < 120) {
+                                                  id(ble_scan_interval) += 5;
+                                                  lv_label_set_text(id(ble_scan_value), str_sprintf("%ds", id(ble_scan_interval)).c_str());
+                                                }
+
+                    # =======================================================
+                    # PRAVÝ SLOUPEC
+                    # =======================================================
+                    - obj:
+                        id: right_column
+                        width: 48%
+                        height: 100%
+                        bg_color: 0x000000
+                        bg_opa: TRANSP
+                        border_width: 0
+                        pad_all: 4
+                        widgets:
+                          # Refresh nastavení
+                          - obj:
+                              id: refresh_item
+                              width: 100%
+                              height: 55
+                              y: 0
+                              bg_color: 0x000000
+                              bg_opa: TRANSP
+                              border_width: 0
+                              border_side: BOTTOM
+                              border_color: 0x333333
+                              pad_all: 8
+                              layout:
+                                type: flex
+                                flex_flow: row
+                                flex_align_main: space_between
+                                flex_align_cross: center
+                              widgets:
+                                - label:
+                                    text: "Refresh"
+                                    text_font: roboto
+                                    text_color: 0xFFFFFF
+                                    flex_grow: 1
+                                - obj:
+                                    width: 130
+                                    height: 35
+                                    bg_opa: TRANSP
+                                    border_width: 0
+                                    pad_all: 1
+                                    layout:
+                                      type: flex
+                                      flex_flow: row
+                                      flex_align_main: space_between
+                                      flex_align_cross: center
+                                    widgets:
+                                      - button:
+                                          id: refresh_minus
+                                          width: 32
+                                          height: 32
+                                          bg_color: 0x444444
+                                          bg_opa: COVER
+                                          radius: 6
+                                          pad_all: 0
+                                          border_width: 0
+                                          widgets:
+                                            - label:
+                                                align: CENTER
+                                                text: "-"
+                                                text_font: roboto_big
+                                                text_color: 0xFFFFFF
+                                          on_click:
+                                            - lambda: |-
+                                                if (id(display_refresh_interval) > 1) {
+                                                  id(display_refresh_interval) -= 1;
+                                                  lv_label_set_text(id(refresh_value), str_sprintf("%.0fs", (float)id(display_refresh_interval)).c_str());
+                                                }
+                                      - label:
+                                          id: refresh_value
+                                          text: !lambda 'return str_sprintf("%.0fs", (float)id(display_refresh_interval));'
+                                          text_font: roboto
+                                          text_color: 0xFF9800
+                                          flex_grow: 1
+                                      - button:
+                                          id: refresh_plus
+                                          width: 32
+                                          height: 32
+                                          bg_color: 0x444444
+                                          bg_opa: COVER
+                                          radius: 6
+                                          pad_all: 0
+                                          border_width: 0
+                                          widgets:
+                                            - label:
+                                                align: CENTER
+                                                text: "+"
+                                                text_font: roboto_big
+                                                text_color: 0xFFFFFF
+                                          on_click:
+                                            - lambda: |-
+                                                if (id(display_refresh_interval) < 30) {
+                                                  id(display_refresh_interval) += 1;
+                                                  lv_label_set_text(id(refresh_value), str_sprintf("%.0fs", (float)id(display_refresh_interval)).c_str());
+                                                }
+
+                          # WiFi nastavení
+                          - obj:
+                              id: wifi_item
+                              width: 100%
+                              height: 55
+                              y: 55
+                              bg_color: 0x000000
+                              bg_opa: TRANSP
+                              border_width: 0
+                              border_side: BOTTOM
+                              border_color: 0x333333
+                              pad_all: 8
+                              layout:
+                                type: flex
+                                flex_flow: row
+                                flex_align_main: space_between
+                                flex_align_cross: center
+                              widgets:
+                                - label:
+                                    text: "WiFi"
+                                    text_font: roboto
+                                    text_color: 0xFFFFFF
+                                    flex_grow: 1
+                                - button:
+                                    id: wifi_toggle_btn
+                                    width: 80
+                                    height: 35
+                                    bg_color: 0x333333
+                                    bg_opa: COVER
+                                    radius: 6
+                                    widgets:
+                                      - label:
+                                          id: wifi_btn_label
+                                          align: CENTER
+                                          text: !lambda |-
+                                            if (id(wifi_enabled)) {
+                                              return "ON";
+                                            } else {
+                                              return "OFF";
+                                            }
+                                          text_font: roboto
+                                          text_color: 0xFFFFFF
+                                    on_click:
+                                      - if:
+                                          condition:
+                                            lambda: "return id(wifi_enabled);"
+                                          then:
+                                            - wifi.disable:
+                                            - lambda: "id(wifi_enabled) = false;"
+                                            - lambda: |-
+                                                lv_label_set_text(id(wifi_btn_label), "OFF");
+                                                lv_obj_set_style_bg_color(id(wifi_toggle_btn), lv_color_hex(0x333333), 0);
+                                            - script.execute: update_wifi_status
+                                            - logger.log: "WiFi disabled"
+                                          else:
+                                            - wifi.enable:
+                                            - lambda: "id(wifi_enabled) = true;"
+                                            - lambda: |-
+                                                lv_label_set_text(id(wifi_btn_label), "ON");
+                                                lv_obj_set_style_bg_color(id(wifi_toggle_btn), lv_color_hex(0x4CAF50), 0);
+                                            - script.execute: update_wifi_status
+                                            - logger.log: "WiFi enabled"
+
+              # =======================================================
+              # RESET BUTTON - na spodu
+              # =======================================================
+              - button:
+                  id: reset_defaults_btn
+                  align: BOTTOM_MID
+                  y: -10
+                  width: 170
+                  height: 35
+                  bg_color: 0xFF3D00
+                  bg_opa: COVER
+                  radius: 6
+                  widgets:
+                    - label:
+                        text: "Reset na výchozí"
+                        text_font: roboto
+                        text_color: 0xFFFFFF
+                  on_click:
+                    - logger.log: "Resetting to defaults..."
+                    - lambda: |-
+                        // Reset všech hodnot
+                        id(display_brightness) = 80;
+                        id(deep_sleep_timeout) = 1800;
+                        id(ble_scan_interval) = 30;
+                        id(display_refresh_interval) = 5;
+                        id(wifi_enabled) = true;
+                    - wifi.enable:
+                    - lambda: |-
+                        // Update UI
+                        lv_slider_set_value(id(brightness_slider), 80, LV_ANIM_OFF);
+                        lv_label_set_text(id(brightness_value), "80%");
+                        lv_label_set_text(id(deep_sleep_value), str_sprintf("%.0fmin", (float)id(deep_sleep_timeout)/60.0).c_str());
+                        lv_label_set_text(id(ble_scan_value), str_sprintf("%ds", id(ble_scan_interval)).c_str());
+                        lv_label_set_text(id(refresh_value), str_sprintf("%.0fs", (float)id(display_refresh_interval)).c_str());
+                        lv_label_set_text(id(wifi_btn_label), "ON");
+                        lv_obj_set_style_bg_color(id(wifi_toggle_btn), lv_color_hex(0x4CAF50), 0);
+
+                        // Aplikuj jas
+                        float brightness_float = 0.8f;
+                        id(id_output_backlight_brightness).set_level(brightness_float);
+                    - script.execute: update_wifi_status
+                    - logger.log: "Defaults restored"
+
+# =============================================================================
+# Modulární komponenty přes packages
+# =============================================================================
+packages:
+  header: !include
+    file: ../components/header.yaml
+    vars:
+      page_id: page_settings
+      prefix: "system_"
+  navigation: !include
+    file: ../components/navigation.yaml
+    vars:
+      page_id: page_settings
+      prefix: "system_"
+      overview_bg: 0x111111
+      overview_text: 0xCCCCCC
+      mppt_bg: 0x111111
+      mppt_text: 0xCCCCCC
+      dcdc_bg: 0x111111
+      dcdc_text: 0xCCCCCC
+      system_bg: 0x4CAF50
+      system_text: 0xFFFFFF
