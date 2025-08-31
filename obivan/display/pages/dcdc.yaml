@@ -9,7 +9,7 @@ lvgl:
     - id: page_dcdc
       bg_color: 0x000000 # Jednotné černé pozadí
       on_swipe_left:
-        - lvgl.page.show: page_system
+        - lvgl.page.show: page_settings
       on_swipe_right:
         - lvgl.page.show: page_mppt
       widgets:

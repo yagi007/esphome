@@ -12,7 +12,7 @@ packages:
   page_overview: !include pages/overview.yaml
   page_mppt: !include pages/mppt.yaml
   page_dcdc: !include pages/dcdc.yaml
-  page_system: !include pages/system.yaml
+  page_settings: !include pages/settings.yaml
   bootscreen_scripts: !include scripts/bootscreen.yaml
   boot_scripts: !include boot.yaml
 

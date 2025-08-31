@@ -99,7 +99,7 @@ lvgl:
                         bg_opa: TRANSP
                         radius: 8
                         on_press:
-                          - lvgl.page.show: page_system
+                          - lvgl.page.show: page_settings
                         widgets:
                           - label:
                               align: CENTER

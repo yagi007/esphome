@@ -82,7 +82,7 @@ time:
 # Do system.yaml přidat tlačítka pro manuální nastavení času
 lvgl:
   pages:
-    - id: page_system
+    - id: page_settings
       widgets:
         # Přidat Time Setting sekci
         - button:
@@ -167,7 +167,7 @@ Nahradit všechny výskyty:
 // Staré:
 id(sntp_time).now()
 
-// Nové:  
+// Nové:
 id(rtc_time).now()
 ```
 
@@ -180,7 +180,7 @@ lambda: |-
     ESP_LOGW("rtc", "RTC time not set - showing default time");
     // Zobrazit varování v GUI
   } else {
-    ESP_LOGI("rtc", "RTC time valid: %04d-%02d-%02d %02d:%02d", 
+    ESP_LOGI("rtc", "RTC time valid: %04d-%02d-%02d %02d:%02d",
              time.year, time.month, time.day_of_month, time.hour, time.minute);
   }
 ```
