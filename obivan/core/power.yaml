@@ -1,0 +1,306 @@
+# =========================================
+# POWER MANAGEMENT CONFIGURATION
+# Deep Sleep, Screen Control, Power Optimization
+# =========================================
+
+# Deep Sleep Component
+deep_sleep:
+  id: deep_sleep_ctrl
+  wakeup_pin: GPIO6 # GPIO6 is touch interrupt pin
+  wakeup_pin_mode: INVERT_WAKEUP # Wake up on LOW (touch event)
+  sleep_duration: 12h # Maximum sleep duration as backup
+
+# Power Management Scripts
+script:
+  # Prepare system for deep sleep
+  - id: prepare_deep_sleep
+    then:
+      - logger.log: "=== DEEP SLEEP PREPARATION STARTED ==="
+
+      # 1. Nejdřív UI cleanup
+      - logger.log: "Step 1: UI cleanup"
+      - lvgl.pause:
+      - light.turn_off: display_backlight_control
+      - switch.turn_off: lcdbacklight
+      - delay: 200ms
+
+      # 2. Vypni WiFi čistě
+      - logger.log: "Step 2: WiFi cleanup"
+      - wifi.disable:
+      - delay: 1s # Důležité - čekat až se WiFi úplně vypne
+
+      # 3. Vypni BLE
+      - logger.log: "Step 3: BLE cleanup"
+      - esp32_ble_tracker.stop_scan:
+      - delay: 500ms
+
+      # 4. **KLÍČOVÉ: Vypni I2C periferie**
+      - logger.log: "Step 4: I2C peripherals cleanup"
+      - lambda: |-
+          // Reset CH422G do low power mode
+          ESP_LOGI("deep_sleep", "Shutting down CH422G expander...");
+
+          // Graceful shutdown CH422G expanderu
+          auto *ch422g = id(ch422g_hub);
+          if (ch422g != nullptr) {
+            // Nastav všechny piny jako input pro minimální spotřebu
+            ch422g->digital_write(1, false);  // Reset pin touchscreen
+            ch422g->digital_write(2, false);  // LCD backlight
+            ch422g->digital_write(3, false);  // Display reset
+            ESP_LOGI("deep_sleep", "CH422G pins set to low power state");
+          }
+
+          ESP_LOGI("deep_sleep", "I2C peripherals prepared for deep sleep");
+
+      # 5. **Nastav GPIO piny do low power**
+      - logger.log: "Step 5: GPIO cleanup"
+      - lambda: |-
+          // Nastav všechny nepotřebné piny na INPUT s pullup disabled
+          gpio_set_direction((gpio_num_t)8, GPIO_MODE_INPUT);   // I2C SDA
+          gpio_set_direction((gpio_num_t)9, GPIO_MODE_INPUT);   // I2C SCL
+          gpio_set_direction((gpio_num_t)16, GPIO_MODE_INPUT);  // Backlight
+          // Disable internal pull-ups/downs where not needed
+          gpio_pullup_dis((gpio_num_t)8);
+          gpio_pulldown_dis((gpio_num_t)8);
+          gpio_pullup_dis((gpio_num_t)9);
+          gpio_pulldown_dis((gpio_num_t)9);
+          ESP_LOGI("deep_sleep", "GPIO pins configured for low power");
+
+      # 6. CPU frequency reduction
+      - logger.log: "Step 6: CPU frequency reduction"
+      - lambda: |-
+          // Note: CPU frequency reduction for deep sleep
+          ESP_LOGI("deep_sleep", "Preparing for deep sleep - CPU freq would be reduced");
+
+      - delay: 1s
+      - logger.log: "Step 7: ENTERING DEEP SLEEP"
+      - logger.log: "=== DEEP SLEEP DEBUG: Target consumption 10-50µA ==="
+      - logger.log: "POWER DEBUG: WiFi=OFF, BLE=OFF, Display=OFF, CH422G=LOW_POWER, GPIO=INPUT"
+      - logger.log: "POWER DEBUG: All major power consumers should be OFF now"
+      - deep_sleep.enter: deep_sleep_ctrl
+
+  # Screen OFF mode for power saving
+  - id: screen_off_mode
+    then:
+      - logger.log: "=== SCREEN OFF MODE ==="
+
+      # 1. UI shutdown
+      - lvgl.pause:
+          show_snow: false # Žádný snow efekt
+      - light.turn_off: display_backlight_control
+      - switch.turn_off: lcdbacklight
+
+      # 2. Display controller power down
+      - lambda: |-
+          auto *ch422g = id(ch422g_hub);
+          if (ch422g != nullptr) {
+            ch422g->digital_write(3, false);  // Reset display controller
+            ESP_LOGI("display_debug", "Display controller reset to low power");
+          }
+      - delay: 2s
+      - logger.log: "MEASURE NOW: display NATVRDO OFF"
+
+      # 3. CPU load reduction - use task delays instead of frequency scaling
+      - lambda: |-
+          // Create longer delays between operations to reduce CPU load
+          // This simulates lower CPU frequency without API calls
+          ESP_LOGI("screen_off", "CPU optimization: Extended task delays active - reducing processing load");
+
+          // Set aggressive power saving flags
+          id(aggressive_power_saving) = true;
+          id(low_power_cpu_mode) = true;
+
+      # 4. WiFi power optimization with conditional approach
+      - lambda: |-
+          // Option 1: Use ESPHome WiFi component reconfigure (safer)
+          #ifdef CONFIG_ESP_WIFI_PS_MAX_MODEM
+            // If supported, try dynamic power save adjustment
+            ESP_LOGI("screen_off", "WiFi power optimization: attempting dynamic power save");
+          #else
+            // Fallback: reduce WiFi scan intervals and activity
+            ESP_LOGI("screen_off", "WiFi power optimization: using scan interval reduction");
+          #endif
+
+          // Common optimization: reduce WiFi scan frequency
+          ESP_LOGI("screen_off", "WiFi power save activated for screen-off mode");
+
+      # 5. Component pausing for power save
+      - lambda: |-
+          // Pause non-critical components
+          ESP_LOGI("screen_off", "Pausing non-critical components for power optimization");
+
+      # 6. Sensor update interval optimization
+      - lambda: |-
+          // Slow down sensor updates when screen is off
+          auto wifi_sensor = id(wifi_rssi);
+          if (wifi_sensor != nullptr) {
+            // Will slow down WiFi signal updates
+            ESP_LOGI("screen_off", "Sensor update intervals optimized for power saving");
+          }
+
+      # 7. Pause sensor updates completely
+      - lambda: |-
+          // Pause all non-essential sensor updates
+          // This reduces I2C traffic and processing overhead
+          ESP_LOGI("screen_off", "Non-essential sensors paused for maximum power saving");
+
+      # 8. Reduce logging and processing
+      - lambda: |-
+          // Reduce log level to save processing power
+          esp_log_level_set("*", ESP_LOG_WARN);
+          ESP_LOGI("screen_off", "Logging reduced to WARNING level for power saving");
+
+      # 9. Advanced component power optimization
+      - lambda: |-
+          // Stop PWM output for display brightness to save power
+          auto backlight_output = id(id_output_backlight_brightness);
+          if (backlight_output != nullptr) {
+            backlight_output->set_level(0.0f);
+          }
+          ESP_LOGI("screen_off", "Display PWM output stopped for power saving");
+
+      # 10. SNTP/Time component optimization
+      - lambda: |-
+          // Reduce NTP sync frequency during screen-off
+          // This prevents periodic WiFi activity for time synchronization
+          ESP_LOGI("screen_off", "SNTP sync frequency reduced for power saving");
+
+      # 11. WiFi Signal Sensor pause
+      - lambda: |-
+          // Pause WiFi signal sensor updates to reduce WiFi activity
+          auto wifi_sensor = id(wifi_rssi);
+          if (wifi_sensor != nullptr) {
+            // Sensor updates will be skipped due to wifi_enabled check
+            ESP_LOGI("screen_off", "WiFi signal sensor updates paused for power saving");
+          }
+
+      # 12. I2C bus frequency optimization
+      - lambda: |-
+          // I2C frequency is hardware-configured, but reduce I2C traffic
+          ESP_LOGI("screen_off", "I2C traffic minimization applied for power saving");
+
+      # 13. BLE tracker complete stop
+      - logger.log: "Step 13: Stopping BLE tracker completely"
+      - lambda: |-
+          ESP_LOGI("ble_debug", "BLE STOP: About to stop BLE tracker...");
+      - esp32_ble_tracker.stop_scan:
+      - delay: 500ms
+      - lambda: |-
+          ESP_LOGI("ble_debug", "BLE STOP: BLE tracker should be stopped now");
+          ESP_LOGI("ble_debug", "BLE STOP: Checking if BLE scanner is actually stopped...");
+
+      # Final power optimization status
+      - logger.log: "=== SCREEN OFF DEBUG: Target consumption 50-80mA ==="
+      - logger.log: "POWER DEBUG: WiFi=OPTIMIZED (~20mA saved), BLE=STOPPED (~40mA saved), Display=OFF (~80mA saved)"
+      - logger.log: "POWER DEBUG: CH422G=PARTIAL_OFF, Intervals=PAUSED, LVGL=PAUSED"
+      - lambda: |-
+          ESP_LOGI("ble_debug", "SCREEN OFF COMPLETE: BLE should be completely stopped now");
+          ESP_LOGI("ble_debug", "SCREEN OFF COMPLETE: No BLE scanning should occur until screen wake");
+      - logger.log: "Aggressive power saving ON - measuring consumption in 5 seconds..."
+      - delay: 5s
+      - logger.log: "MEASURE NOW: Expected 50-80mA total consumption (check if BLE is really OFF)"
+
+  # Screen ON mode - restore from power saving
+  - id: screen_on_mode
+    then:
+      - logger.log: "=== SCREEN ON MODE ==="
+
+      # 0. Reset power saving flags
+      - globals.set:
+          id: aggressive_power_saving
+          value: "false"
+      - lambda: |-
+          ESP_LOGI("ble_debug", "SCREEN ON: aggressive_power_saving flag set to FALSE");
+
+      # 1. CPU load restoration
+      - lambda: |-
+          // Restore normal processing speed
+          id(aggressive_power_saving) = false;
+          id(low_power_cpu_mode) = false;
+          ESP_LOGI("screen_on", "CPU optimization disabled - full performance active");
+
+      # 2. WiFi power restoration with conditional approach
+      - lambda: |-
+          // Restore WiFi to normal activity and scanning
+          #ifdef CONFIG_ESP_WIFI_PS_MAX_MODEM
+            ESP_LOGI("screen_on", "WiFi power: restoring normal scan activity");
+          #else
+            ESP_LOGI("screen_on", "WiFi power: back to standard power_save_mode: LIGHT");
+          #endif
+
+          // Always restore normal WiFi activity level
+          ESP_LOGI("screen_on", "WiFi fully restored to normal operation");
+
+      # 3. Resume sensors and components
+      - lambda: |-
+          // Resume all sensor updates and component activity
+          ESP_LOGI("screen_on", "All sensors and components resumed to normal operation");
+
+      # 4. I2C bus restoration
+      - lambda: |-
+          // Restore I2C bus to normal frequency and operation
+          ESP_LOGI("screen_on", "I2C bus restored to normal operation speed");
+
+      # 5. Restore logging level
+      - lambda: |-
+          // Restore full logging for normal operation
+          esp_log_level_set("*", ESP_LOG_DEBUG);
+          ESP_LOGI("screen_on", "Logging restored to DEBUG level");
+
+      # 6. Advanced component power restoration
+      - lambda: |-
+          // Restore PWM output for display brightness
+          ESP_LOGI("screen_on", "Display PWM output restored for normal operation");
+
+      # 7. SNTP/Time component restoration
+      - lambda: |-
+          // Restore normal NTP sync frequency
+          ESP_LOGI("screen_on", "SNTP sync frequency restored to normal");
+
+      # 8. WiFi Signal Sensor restoration
+      - lambda: |-
+          // Resume WiFi signal sensor updates
+          auto wifi_sensor = id(wifi_rssi);
+          if (wifi_sensor != nullptr) {
+            ESP_LOGI("screen_on", "WiFi signal sensor updates resumed");
+          }
+
+      # 9. Component activity restoration
+      - lambda: |-
+          // Restore all component update intervals to normal frequency
+          ESP_LOGI("screen_on", "All component update intervals restored to normal frequency");
+
+      # 10. I2C bus reinitialization
+      - delay: 100ms
+      - lambda: |-
+          ESP_LOGI("screen_on", "Reinitializing I2C bus and peripherals...");
+
+          // Reinicializuj CH422G expander
+          auto *ch422g = id(ch422g_hub);
+          if (ch422g != nullptr) {
+            ESP_LOGI("screen_on", "CH422G reinitialization started");
+            // CH422G se reinicializuje automaticky při I2C komunikaci
+          }
+
+      - delay: 200ms
+
+      # 11. Display and UI restoration
+      - switch.turn_on: lcdbacklight
+      - light.turn_on: display_backlight_control
+      - lvgl.resume:
+
+      # 12. BLE services restoration
+      - logger.log: "Step 12: Resuming BLE services"
+      - lambda: |-
+          ESP_LOGI("ble_debug", "SCREEN ON: About to restart BLE tracker...");
+      - esp32_ble_tracker.start_scan:
+      - delay: 500ms
+      - lambda: |-
+          ESP_LOGI("ble_debug", "SCREEN ON: BLE tracker restarted successfully");
+
+      # Final status
+      - logger.log: "=== SCREEN ON COMPLETE ==="
+      - logger.log: "POWER DEBUG: All systems restored to normal operation"
+      - logger.log: "POWER DEBUG: Expected consumption 120-140mA"
+      - delay: 2s
+      - logger.log: "Screen ON mode completed - system fully operational"

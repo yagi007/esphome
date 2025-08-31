@@ -56,6 +56,7 @@
       "\U000F0925", # WIFI 3 good
       "\U000F0928", # WIFI 4 excelent
       "\U000F092D", # WIFI OFF
+      "\U000F0493", # Settings
     ]
 - file: "materialdesignicons-webfont.ttf"
   id: mdi_small
@@ -75,4 +76,6 @@
       "\U000F0922", # WIFI 2
       "\U000F0925", # WIFI 3
       "\U000F0928", # WIFI 4
+      "\U000F0493", # Settings
+
     ]

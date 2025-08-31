@@ -14,37 +14,44 @@ packages:
   page_dcdc: !include pages/dcdc.yaml
   page_system: !include pages/system.yaml
   bootscreen_scripts: !include scripts/bootscreen.yaml
+  boot_scripts: !include boot.yaml
 
 # Časovač pro aktualizace (šetrný s baterií)
 interval:
   - interval: 30s
-    # Častější aktualizace pro responzivní UI
-    then:
-      - script.execute: update_main_dashboard
-
-  - interval: 60s # Méně časté aktualizace data náročných operací
-    then:
-      - script.execute: update_datetime
-
-  - interval: 120s # Řízené BLE skenování každé 2 minuty pro úsporu energie
+    # Častější aktualizace pro responzivní UI (pouze když je displej aktivní)
     then:
       - if:
           condition:
             and:
               - switch.is_on: lcdbacklight
               - lambda: "return !id(manual_display_off);"
+              #- lambda: "return !id(aggressive_power_saving);"
           then:
-            - lambda: |-
-                ESP_LOGI("ble", "Checking BLE status before restart...");
-            - esp32_ble_tracker.start_scan:
-            - logger.log: "BLE scan restarted - display is active"
+            - script.execute: update_main_dashboard
           else:
-            - logger.log: "Skipping BLE scan - display is off for power saving"
+            - logger.log: "Skipping main dashboard update - display is off for power saving"
+
+  - interval: 60s # Méně časté aktualizace data náročných operací (pouze když je displej aktivní)
+    then:
+      - if:
+          condition:
+            and:
+              - switch.is_on: lcdbacklight
+              - lambda: "return !id(manual_display_off);"
+              # - lambda: "return !id(aggressive_power_saving);"
+          then:
+            - script.execute: update_datetime
+          else:
+            - logger.log: "Skipping datetime update - display is off for power saving"
+
+  # BLE interval disabled - BLE is now controlled only by screen_on/screen_off modes
+  # This prevents unwanted BLE restarts that were consuming ~40mA during screen-off
 
 # LVGL idle timeouts pro automatické screen-off a deep sleep
 lvgl:
   on_idle:
-    - timeout: 30s # Screen off po 30 sekundách nečinnosti
+    - timeout: 300s # Screen off po 30 sekundách nečinnosti
       then:
         - logger.log: "LVGL idle 30s - turning off screen"
         - script.execute: screen_off_mode
@@ -238,6 +245,19 @@ script:
             if (rssi > -70) return lv_color_hex(0xFF9800);
             if (rssi > -80) return lv_color_hex(0xFF0000); // RED - poor
             return lv_color_hex(0xFF5722);
+
+      # Update WiFi toggle button in system page
+      - lambda: |-
+          // Update WiFi toggle button status
+          if (id(wifi_enabled)) {
+            lv_obj_set_style_bg_color(id(wifi_toggle_btn), lv_color_hex(0x4CAF50), LV_PART_MAIN);
+            lv_label_set_text(id(wifi_btn_label), "ZAPNUTO");
+            ESP_LOGI("wifi_ui", "WiFi toggle button updated to ENABLED state");
+          } else {
+            lv_obj_set_style_bg_color(id(wifi_toggle_btn), lv_color_hex(0xFF5722), LV_PART_MAIN);
+            lv_label_set_text(id(wifi_btn_label), "VYPNUTO");
+            ESP_LOGI("wifi_ui", "WiFi toggle button updated to DISABLED state");
+          }
 
   - id: update_battery_data
     then:

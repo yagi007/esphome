@@ -1,0 +1,116 @@
+# =========================================
+# DISPLAY BOOT SCRIPTS
+# Boot sequences that depend on LVGL components
+# =========================================
+
+# Boot-related Scripts that use LVGL components
+script:
+  # Boot sequence with timeout
+  - id: boot_with_timeout
+    then:
+      - logger.log: "=== BOOT SEQUENCE WITH TIMEOUT ==="
+      - lambda: |-
+          ESP_LOGI("ble_debug", "BOOT START: BLE tracker should be starting automatically...");
+
+      # Základní UI setup
+      - switch.turn_on: lcdbacklight
+      - light.turn_on: display_backlight_control
+      - lvgl.resume:
+      - lvgl.page.show: page_bootscreen
+      - script.execute: init_system_values
+
+      # Boot progress
+      - delay: 2s
+      - lambda: |-
+          ESP_LOGI("boot", "Boot sequence: Display initialized");
+
+      - logger.log: "Boot: Starting network services..."
+      - wifi.enable:
+      - script.execute: update_bootscreen_progress
+      - delay: 1s
+      - script.execute: update_bootscreen_progress
+      - delay: 3s
+      - script.execute: update_bootscreen_progress
+      - delay: 5s
+
+      # Check connectivity and continue
+      - if:
+          condition:
+            wifi.connected:
+          then:
+            - logger.log: "Boot: WiFi connected - continuing normal boot"
+            - script.execute: continue_normal_boot
+          else:
+            - logger.log: "Boot: No WiFi connection - continuing offline boot"
+            - script.execute: continue_boot_offline
+
+  # Continue boot sequence when offline
+  - id: continue_boot_offline
+    then:
+      - logger.log: "=== CONTINUING BOOT IN OFFLINE MODE ==="
+
+      - script.execute: update_bootscreen_progress
+      - delay: 1s
+      - script.execute: update_bootscreen_progress
+      - script.execute: apply_brightness
+      - delay: 1s
+      - script.execute: hide_bootscreen
+
+      - lambda: |-
+          ESP_LOGW("boot", "System started in offline mode");
+          id(wifi_enabled) = false;
+
+      - logger.log: "Boot sequence completed (offline mode)"
+
+  # Continue boot sequence when online
+  - id: continue_normal_boot
+    then:
+      - logger.log: "=== CONTINUING BOOT WITH NETWORK ==="
+
+      - script.execute: update_bootscreen_progress
+      - delay: 1s
+      - script.execute: update_bootscreen_progress
+      - script.execute: apply_brightness
+      - delay: 1s
+      - script.execute: hide_bootscreen
+
+      - lambda: |-
+          ESP_LOGI("boot", "System started successfully with WiFi");
+          id(wifi_enabled) = true;
+
+      - logger.log: "Boot sequence completed (online mode)"
+
+  # Initialize system values from NVS (uses LVGL components)
+  - id: init_system_values
+    then:
+      - lambda: |-
+          // Inicializuj systémové hodnoty při bootu
+          ESP_LOGI("system", "=== INIT_SYSTEM_VALUES SCRIPT STARTED ===");
+          ESP_LOGI("system", "=== SYSTEM VALUES AFTER NVS RESTORE ===");
+          ESP_LOGI("system", "deep_sleep_timeout: %d", id(deep_sleep_timeout));
+          ESP_LOGI("system", "ble_scan_interval: %d", id(ble_scan_interval));
+          ESP_LOGI("system", "display_brightness: %d", id(display_brightness));
+          ESP_LOGI("system", "display_refresh_interval: %d", id(display_refresh_interval));
+          ESP_LOGI("system", "=== END SYSTEM VALUES ===");
+          ESP_LOGI("system", "=== INIT_SYSTEM_VALUES SCRIPT COMPLETED ===");
+
+          // Inicializuj brightness slider a hodnotu
+          // Tyto komponenty se inicializují po vytvoření LVGL stránky
+          lv_slider_set_value(id(brightness_slider), (int32_t)id(display_brightness), LV_ANIM_OFF);
+          lv_label_set_text(id(brightness_value), str_sprintf("%d%%", id(display_brightness)).c_str());
+
+          // Inicializuj ostatní hodnoty
+          lv_label_set_text(id(deep_sleep_value), str_sprintf("%.0f", (float)id(deep_sleep_timeout)).c_str());
+          lv_label_set_text(id(ble_scan_value), str_sprintf("%.0f", (float)id(ble_scan_interval)).c_str());
+          lv_label_set_text(id(refresh_value), str_sprintf("%.0f", (float)id(display_refresh_interval)).c_str());
+
+          // Inicializuj WiFi toggle button
+          if (id(wifi_enabled)) {
+            lv_obj_set_style_bg_color(id(wifi_toggle_btn), lv_color_hex(0x4CAF50), LV_PART_MAIN);
+            lv_label_set_text(id(wifi_btn_label), "ZAPNUTO");
+          } else {
+            lv_obj_set_style_bg_color(id(wifi_toggle_btn), lv_color_hex(0xFF5722), LV_PART_MAIN);
+            lv_label_set_text(id(wifi_btn_label), "VYPNUTO");
+          }
+
+          ESP_LOGI("system", "UI values initialized including WiFi toggle button");

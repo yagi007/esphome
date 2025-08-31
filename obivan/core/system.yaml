@@ -1,0 +1,121 @@
+# =========================================
+# SYSTEM CONFIGURATION
+# Global Variables, Logger, Boot & System Scripts
+# =========================================
+
+# System Logger Configuration
+
+logger:
+  level: DEBUG
+  logs:
+    esp32_ble_tracker: ERROR
+    victron_ble: ERROR
+    lvgl: ERROR
+    esp-idf: WARN
+    wifi: INFO
+    esp32_touch: INFO
+
+# Global System Variables
+globals:
+  - id: manual_display_off
+    type: bool
+    initial_value: "false"
+  - id: ignore_touch
+    type: bool
+    initial_value: "false"
+  - id: power_debug_mode
+    type: bool
+    initial_value: "false" # Disabled for compilation issues
+  - id: aggressive_power_saving
+    type: bool
+    initial_value: "false" # Set to true when in screen-off mode for BLE debugging
+  - id: low_power_cpu_mode
+    type: bool
+    initial_value: "false"
+
+# System Scripts
+script:
+  # Touch wake handler
+  - id: touch_wake
+    then:
+      - delay: 500ms
+      - if:
+          condition:
+            and:
+              - switch.is_off: lcdbacklight
+              - light.is_off: display_backlight_control
+          then:
+            - logger.log: "Touch wake - reinitializing CH422G"
+            - lambda: |-
+                auto *ch422g = id(ch422g_hub);
+                if (ch422g != nullptr) {
+                  ESP_LOGI("touch_wake", "Reinitializing CH422G for wake-up...");
+                }
+            - script.execute: screen_on_mode
+            - lambda: |-
+                ESP_LOGI("touch_wake", "Screen wake-up completed");
+            - logger.log: "Touch wake - system restored"
+
+  # Touch ignore for preventing accidental touches
+  - id: touch_ignore_short
+    then:
+      - globals.set:
+          id: ignore_touch
+          value: "true"
+      - delay: 800ms
+      - globals.set:
+          id: ignore_touch
+          value: "false"
+
+  # Apply brightness setting
+  - id: apply_brightness
+    then:
+      - lambda: |-
+          auto brightness = (float)id(display_brightness) / 100.0f;
+          auto call = id(display_backlight_control).turn_on();
+          call.set_brightness(brightness);
+          call.perform();
+
+  # Reset system to default values
+  - id: reset_to_defaults
+    then:
+      - lambda: |-
+          // Reset na výchozí hodnoty
+          id(deep_sleep_timeout) = 300;
+          id(ble_scan_interval) = 10;
+          id(display_brightness) = 80;
+          id(display_refresh_interval) = 10;
+          id(wifi_enabled) = true;
+          ESP_LOGI("system", "Reset to default values completed");
+
+  # Toggle WiFi on/off
+  - id: toggle_wifi
+    then:
+      - if:
+          condition:
+            lambda: "return id(wifi_enabled);"
+          then:
+            - wifi.disable:
+            - lambda: "id(wifi_enabled) = false;"
+            - script.execute: update_wifi_status
+            - logger.log: "WiFi disabled"
+          else:
+            - wifi.enable:
+            - lambda: "id(wifi_enabled) = true;"
+            - script.execute: update_wifi_status
+            - logger.log: "WiFi enabled"
+
+  # Restore debug log levels
+  - id: restore_log_levels
+    then:
+      - logger.log: "=== RESTORING LOG LEVELS ==="
+      - logger.log: "Setting all log levels back to DEBUG for troubleshooting"
+      - lambda: |-
+          esp_log_level_set("*", ESP_LOG_DEBUG);
+          esp_log_level_set("wifi", ESP_LOG_INFO);
+          esp_log_level_set("esp32_ble_tracker", ESP_LOG_ERROR);
+          esp_log_level_set("victron_ble", ESP_LOG_ERROR);
+          esp_log_level_set("lvgl", ESP_LOG_ERROR);
+          esp_log_level_set("esp-idf", ESP_LOG_WARN);
+      - logger.log: "Log levels restored to DEBUG"
+      - logger.log: "Restart the device to apply the log level changes"

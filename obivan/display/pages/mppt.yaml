@@ -7,7 +7,11 @@
 lvgl:
   pages:
     - id: page_mppt
-      bg_color: 0x000000  # Jednotné černé pozadí
+      bg_color: 0x000000 # Jednotné černé pozadí
+      on_swipe_left:
+        - lvgl.page.show: page_dcdc
+      on_swipe_right:
+        - lvgl.page.show: page_overview
       widgets:
         # HEADER přidán přes packages (modulární)
 
@@ -37,7 +41,7 @@ lvgl:
                   text: "Detailní informace o MPPT\n(budoucí implementace)"
                   text_font: roboto
                   text_color: 0xCCCCCC
-        
+
         # Navigace přidána přes packages (modulární)
 
 packages:

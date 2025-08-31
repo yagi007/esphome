@@ -9,10 +9,10 @@ substitutions:
   icon_color_off: 0xAAAAAA
 
   # Defaultní hodnoty nastavení
-  default_deep_sleep_timeout: "300" # 5 minut
-  default_ble_scan_interval: "10" # 10 sekund - lepší pro aktualizace
+  default_deep_sleep_timeout: "900" # 15 minut
+  default_ble_scan_interval: "5" # 10 sekund - lepší pro aktualizace
   default_display_brightness: "80" # 80%
-  default_display_refresh_interval: "10" # 1 sekunda
+  default_display_refresh_interval: "10" # 10 sekunda
 
 # Perzistentní globální proměnné
 globals:
@@ -44,4 +44,4 @@ globals:
 packages:
   hardware: !include obivan/hardware.yaml
   victronble: !include obivan/victronble.yaml
-  lvgl_gui: !include obivan/display/lvgl.yaml
+  lvgl_gui: !include obivan/display/main.yaml

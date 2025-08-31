@@ -1,0 +1,47 @@
+# =========================================
+# NETWORK CONFIGURATION
+# WiFi, Time, OTA, and Network Services
+# =========================================
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  power_save_mode: LIGHT # Úspora energie (NONE/LIGHT/HIGH)
+  # HIGH mode saves more power but may impact connectivity
+  passive_scan: true
+  #manual_ip:
+  #  static_ip: 192.168.4.26
+  #  gateway: 192.168.4.1
+  #  subnet: 255.255.252.0
+  output_power: 17dB
+
+# MDNS Discovery (disabled for power saving)
+mdns:
+  disabled: true
+
+# Network Time Protocol
+time:
+  - platform: sntp
+    id: sntp_time
+    timezone: Europe/Prague
+
+# Over-The-Air Updates
+#ota:
+#  - platform: esphome
+#    password: !secret ota_password
+
+# WiFi Signal Strength Sensor
+sensor:
+  - platform: wifi_signal
+    id: wifi_rssi
+    name: "WiFi Signal"
+    update_interval: 120s # Reduced frequency for power saving
+    filters:
+      - lambda: |-
+          if (!id(wifi_enabled)) {
+            return {}; // Don't update when WiFi is disabled
+          }
+          if (id(aggressive_power_saving)) {
+            return {}; // Don't update during screen-off mode for power saving
+          }
+          return x;

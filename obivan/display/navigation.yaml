@@ -145,7 +145,7 @@ lvgl:
                         widgets:
                           - label:
                               align: CENTER
-                              text: "\U000F0594"
+                              text: "\U000F0E1C"
                               text_font: mdi
                               text_color: ${overview_text}
 # =============================================================================

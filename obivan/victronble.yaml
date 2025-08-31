@@ -4,7 +4,7 @@ external_components:
 esp32_ble_tracker:
   scan_parameters:
     # === OPTIMALIZACE PRO DEEP SLEEP A ÚSPORU ENERGIE ===
-    interval: 10000ms # 10 sekund - delší interval pro úsporu energie
+    interval: 5000ms # 10 sekund - delší interval pro úsporu energie
     window: 300ms # Kratší window = významná úspora energie
     active: false # Passive scan = významná úspora energie
   on_scan_end:
