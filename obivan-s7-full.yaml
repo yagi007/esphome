@@ -12,7 +12,8 @@ substitutions:
   default_deep_sleep_timeout: "900" # 15 minut
   default_ble_scan_interval: "5" # 10 sekund - lepší pro aktualizace
   default_display_brightness: "80" # 80%
-  default_display_refresh_interval: "10" # 10 sekunda
+  default_display_refresh_interval: "3" # 10 sekunda
+  default_display_screenoff_interval: "300" # 5 minut
 
 # Perzistentní globální proměnné
 globals:
@@ -35,6 +36,11 @@ globals:
     type: int
     restore_value: true
     initial_value: ${default_display_refresh_interval}
+
+  - id: display_screenoff_interval
+    type: int
+    restore_value: true
+    initial_value: ${default_display_screenoff_interval}
 
   - id: wifi_enabled
     type: bool

@@ -17,60 +17,70 @@ packages:
   boot_scripts: !include boot.yaml
 
 # Časovač pro aktualizace (šetrný s baterií)
-interval:
-  - interval: 30s
-    # Častější aktualizace pro responzivní UI (pouze když je displej aktivní)
-    then:
-      - if:
-          condition:
-            and:
-              - switch.is_on: lcdbacklight
-              - lambda: "return !id(manual_display_off);"
-              #- lambda: "return !id(aggressive_power_saving);"
-          then:
-            - script.execute: update_main_dashboard
-          else:
-            - logger.log: "Skipping main dashboard update - display is off for power saving"
+# Globální proměnné pro časování
+globals:
+  - id: last_dashboard_update
+    type: unsigned long
+    initial_value: "0"
+  - id: last_datetime_update
+    type: unsigned long
+    initial_value: "0"
+  - id: last_activity_time
+    type: unsigned long
+    initial_value: "0"
 
-  - interval: 60s # Méně časté aktualizace data náročných operací (pouze když je displej aktivní)
+interval:
+  - interval: 1s
+    # Pevný 1s interval s vnitřní logikou pro konfigurovatelné časy
     then:
-      - if:
-          condition:
-            and:
-              - switch.is_on: lcdbacklight
-              - lambda: "return !id(manual_display_off);"
-              # - lambda: "return !id(aggressive_power_saving);"
-          then:
-            - script.execute: update_datetime
-          else:
-            - logger.log: "Skipping datetime update - display is off for power saving"
+      - lambda: |-
+          unsigned long now = millis();
+
+          // Dashboard update podle display_refresh_interval
+          if (now - id(last_dashboard_update) >= (id(display_refresh_interval) * 1000)) {
+            if (id(lcdbacklight)->state && !id(manual_display_off)) {
+              id(update_main_dashboard).execute();
+              id(last_dashboard_update) = now;
+            }
+          }
+
+          // Datetime update 20x pomaleji než dashboard
+          if (now - id(last_datetime_update) >= (id(display_refresh_interval) * 20 * 1000)) {
+            if (id(lcdbacklight)->state && !id(manual_display_off)) {
+              id(update_datetime).execute();
+              id(last_datetime_update) = now;
+            }
+          }
+
+          // Screen-off timeout check
+          if (id(lcdbacklight)->state && !id(manual_display_off)) {
+            unsigned long inactive_time = lv_disp_get_inactive_time(NULL);
+            if (inactive_time >= (id(display_screenoff_interval) * 1000)) {
+              ESP_LOGI("main", "Screen timeout reached (%ds) - turning off", id(display_screenoff_interval));
+              id(screen_off_mode).execute();
+              id(manual_display_off) = true;
+            }
+          }
+
+          // Deep sleep timeout check
+          static unsigned long screen_off_start = 0;
+          if (!id(lcdbacklight)->state && id(deep_sleep_timeout) > 0) {
+            if (screen_off_start == 0) screen_off_start = now;
+            if ((now - screen_off_start) >= (id(deep_sleep_timeout) * 1000)) {
+              ESP_LOGI("main", "Deep sleep timeout reached (%ds) - preparing deep sleep", id(deep_sleep_timeout));
+              id(prepare_deep_sleep).execute();
+              screen_off_start = 0;
+            }
+          } else {
+            // Reset screen off timer if screen is on
+            screen_off_start = 0;
+          }
 
   # BLE interval disabled - BLE is now controlled only by screen_on/screen_off modes
   # This prevents unwanted BLE restarts that were consuming ~40mA during screen-off
 
-# LVGL idle timeouts pro automatické screen-off a deep sleep
+# LVGL basic configuration - timeouts handled in interval above
 lvgl:
-  on_idle:
-    - timeout: 300s # Screen off po 30 sekundách nečinnosti
-      then:
-        - logger.log: "LVGL idle 30s - turning off screen"
-        - script.execute: screen_off_mode
-        - globals.set:
-            id: manual_display_off
-            value: "true"
-
-    - timeout: !lambda "return id(deep_sleep_timeout) * 1000;" # Konfigurovateľný deep sleep timeout
-      then:
-        - if:
-            condition:
-              lambda: "return id(deep_sleep_timeout) > 0;"
-            then:
-              - logger.log:
-                  format: "LVGL idle %ds - preparing deep sleep"
-                  args: ["id(deep_sleep_timeout)"]
-              - script.execute: prepare_deep_sleep
-            else:
-              - logger.log: "Deep sleep disabled - staying in screen off mode"
 
 # Scripts pro aktualizace dat
 script:

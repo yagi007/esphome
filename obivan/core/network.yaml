@@ -36,10 +36,15 @@ time:
     id: sntp_time
     timezone: Europe/Prague
 
+# homeassistant API
+api:
+  encryption:
+    key: "MtD8MNPSqjfvJVqRIjkzwrXsP5HFpsoMDH3uDuhA8f4="
+
 # Over-The-Air Updates
-#ota:
-#  - platform: esphome
-#    password: !secret ota_password
+ota:
+  - platform: esphome
+    password: !secret ota_password
 
 # WiFi Signal Strength Sensor
 sensor:

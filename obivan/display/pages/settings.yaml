@@ -115,13 +115,17 @@ lvgl:
                         bg_opa: TRANSP
                         border_width: 0
                         pad_all: 4
+                        layout:
+                          type: flex
+                          flex_flow: column
+                          flex_align_main: start
+                          flex_align_cross: start
                         widgets:
                           # Deep Sleep nastavení
                           - obj:
                               id: deep_sleep_item
                               width: 100%
                               height: 55
-                              y: 0
                               bg_color: 0x000000
                               bg_opa: TRANSP
                               border_width: 0
@@ -205,7 +209,6 @@ lvgl:
                               id: ble_scan_item
                               width: 100%
                               height: 55
-                              y: 55
                               bg_color: 0x000000
                               bg_opa: TRANSP
                               border_width: 0
@@ -295,13 +298,17 @@ lvgl:
                         bg_opa: TRANSP
                         border_width: 0
                         pad_all: 4
+                        layout:
+                          type: flex
+                          flex_flow: column
+                          flex_align_main: start
+                          flex_align_cross: start
                         widgets:
                           # Refresh nastavení
                           - obj:
                               id: refresh_item
                               width: 100%
                               height: 55
-                              y: 0
                               bg_color: 0x000000
                               bg_opa: TRANSP
                               border_width: 0
@@ -380,12 +387,96 @@ lvgl:
                                                   lv_label_set_text(id(refresh_value), str_sprintf("%.0fs", (float)id(display_refresh_interval)).c_str());
                                                 }
 
+                          # Screen-off nastavení
+                          - obj:
+                              id: screenoff_item
+                              width: 100%
+                              height: 55
+                              bg_color: 0x000000
+                              bg_opa: TRANSP
+                              border_width: 0
+                              border_side: BOTTOM
+                              border_color: 0x333333
+                              pad_all: 8
+                              layout:
+                                type: flex
+                                flex_flow: row
+                                flex_align_main: space_between
+                                flex_align_cross: center
+                              widgets:
+                                - label:
+                                    text: "Screen-off"
+                                    text_font: roboto
+                                    text_color: 0xFFFFFF
+                                    flex_grow: 1
+                                - obj:
+                                    width: 130
+                                    height: 35
+                                    bg_opa: TRANSP
+                                    border_width: 0
+                                    pad_all: 1
+                                    layout:
+                                      type: flex
+                                      flex_flow: row
+                                      flex_align_main: space_between
+                                      flex_align_cross: center
+                                    widgets:
+                                      - button:
+                                          id: screenoff_minus
+                                          width: 32
+                                          height: 32
+                                          bg_color: 0x444444
+                                          bg_opa: COVER
+                                          radius: 6
+                                          pad_all: 0
+                                          border_width: 0
+                                          widgets:
+                                            - label:
+                                                align: CENTER
+                                                text: "-"
+                                                text_font: roboto_big
+                                                text_color: 0xFFFFFF
+                                          on_click:
+                                            - lambda: |-
+                                                if (id(display_screenoff_interval) > 30) {
+                                                  id(display_screenoff_interval) -= 30;
+                                                  float minutes = id(display_screenoff_interval) / 60.0;
+                                                  lv_label_set_text(id(screenoff_value), str_sprintf("%.1fm", minutes).c_str());
+                                                }
+                                      - label:
+                                          id: screenoff_value
+                                          text: !lambda 'return str_sprintf("%.1fm", (float)id(display_screenoff_interval) / 60.0);'
+                                          text_font: roboto
+                                          text_color: 0xFF9800
+                                          flex_grow: 1
+                                      - button:
+                                          id: screenoff_plus
+                                          width: 32
+                                          height: 32
+                                          bg_color: 0x444444
+                                          bg_opa: COVER
+                                          radius: 6
+                                          pad_all: 0
+                                          border_width: 0
+                                          widgets:
+                                            - label:
+                                                align: CENTER
+                                                text: "+"
+                                                text_font: roboto_big
+                                                text_color: 0xFFFFFF
+                                          on_click:
+                                            - lambda: |-
+                                                if (id(display_screenoff_interval) < 1800) {
+                                                  id(display_screenoff_interval) += 30;
+                                                  float minutes = id(display_screenoff_interval) / 60.0;
+                                                  lv_label_set_text(id(screenoff_value), str_sprintf("%.1fm", minutes).c_str());
+                                                }
+
                           # WiFi nastavení
                           - obj:
                               id: wifi_item
                               width: 100%
                               height: 55
-                              y: 55
                               bg_color: 0x000000
                               bg_opa: TRANSP
                               border_width: 0
@@ -405,7 +496,7 @@ lvgl:
                                     flex_grow: 1
                                 - button:
                                     id: wifi_toggle_btn
-                                    width: 80
+                                    width: 86
                                     height: 35
                                     bg_color: 0x333333
                                     bg_opa: COVER
@@ -459,29 +550,32 @@ lvgl:
                     - label:
                         text: "Reset na výchozí"
                         text_font: roboto
+                        align: CENTER
                         text_color: 0xFFFFFF
                   on_click:
                     - logger.log: "Resetting to defaults..."
                     - lambda: |-
-                        // Reset všech hodnot
-                        id(display_brightness) = 80;
-                        id(deep_sleep_timeout) = 1800;
-                        id(ble_scan_interval) = 30;
-                        id(display_refresh_interval) = 5;
+                        // Reset všech hodnot na defaultní substituce
+                        id(display_brightness) = ${default_display_brightness};
+                        id(deep_sleep_timeout) = ${default_deep_sleep_timeout};
+                        id(ble_scan_interval) = ${default_ble_scan_interval};
+                        id(display_refresh_interval) = ${default_display_refresh_interval};
+                        id(display_screenoff_interval) = ${default_display_screenoff_interval};
                         id(wifi_enabled) = true;
                     - wifi.enable:
                     - lambda: |-
-                        // Update UI
-                        lv_slider_set_value(id(brightness_slider), 80, LV_ANIM_OFF);
-                        lv_label_set_text(id(brightness_value), "80%");
-                        lv_label_set_text(id(deep_sleep_value), str_sprintf("%.0fmin", (float)id(deep_sleep_timeout)/60.0).c_str());
-                        lv_label_set_text(id(ble_scan_value), str_sprintf("%ds", id(ble_scan_interval)).c_str());
-                        lv_label_set_text(id(refresh_value), str_sprintf("%.0fs", (float)id(display_refresh_interval)).c_str());
+                        // Update UI s dynamickými hodnotami
+                        lv_slider_set_value(id(brightness_slider), ${default_display_brightness}, LV_ANIM_OFF);
+                        lv_label_set_text(id(brightness_value), "${default_display_brightness}%");
+                        lv_label_set_text(id(deep_sleep_value), str_sprintf("%.0fmin", (float)${default_deep_sleep_timeout}/60.0).c_str());
+                        lv_label_set_text(id(ble_scan_value), "${default_ble_scan_interval}s");
+                        lv_label_set_text(id(refresh_value), "${default_display_refresh_interval}s");
+                        lv_label_set_text(id(screenoff_value), str_sprintf("%.1fm", (float)${default_display_screenoff_interval} / 60.0).c_str());
                         lv_label_set_text(id(wifi_btn_label), "ON");
                         lv_obj_set_style_bg_color(id(wifi_toggle_btn), lv_color_hex(0x4CAF50), 0);
 
-                        // Aplikuj jas
-                        float brightness_float = 0.8f;
+                        // Aplikuj jas z defaultní hodnoty
+                        float brightness_float = ${default_display_brightness} / 100.0f;
                         id(id_output_backlight_brightness).set_level(brightness_float);
                     - script.execute: update_wifi_status
                     - logger.log: "Defaults restored"
