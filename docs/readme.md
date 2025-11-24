@@ -11,3 +11,13 @@ docker exec flamboyant_wilbur esphome compile obivan-s7-full.yaml | cat
 
 Validate:
 
+
+
+
+
+Install Esphom
+    docker pull ghcr.io/esphome/esphome
+
+
+Run docker esphome
+

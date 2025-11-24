@@ -101,10 +101,25 @@ script:
           lv_slider_set_value(id(brightness_slider), (int32_t)id(display_brightness), LV_ANIM_OFF);
           lv_label_set_text(id(brightness_value), str_sprintf("%d%%", id(display_brightness)).c_str());
 
-          // Inicializuj ostatní hodnoty
-          lv_label_set_text(id(deep_sleep_value), str_sprintf("%.0f", (float)id(deep_sleep_timeout)).c_str());
-          lv_label_set_text(id(ble_scan_value), str_sprintf("%.0f", (float)id(ble_scan_interval)).c_str());
-          lv_label_set_text(id(refresh_value), str_sprintf("%.0f", (float)id(display_refresh_interval)).c_str());
+          // Inicializuj ostatní hodnoty s jednotkami (stejný formát jako při změně)
+          // Deep Sleep: hodnota v sekundách, zobrazujeme "OFF" pro 0, "s" pro < 120s, jinak "min"
+          if (id(deep_sleep_timeout) == 0) {
+            lv_label_set_text(id(deep_sleep_value), "OFF");
+          } else if (id(deep_sleep_timeout) < 120) {
+            lv_label_set_text(id(deep_sleep_value), str_sprintf("%ds", id(deep_sleep_timeout)).c_str());
+          } else {
+            lv_label_set_text(id(deep_sleep_value), str_sprintf("%.0fmin", (float)id(deep_sleep_timeout)/60.0).c_str());
+          }
+          // BLE Scan: hodnota v sekundách, zobrazujeme s jednotkou "s"
+          lv_label_set_text(id(ble_scan_value), str_sprintf("%ds", id(ble_scan_interval)).c_str());
+          // Refresh: hodnota v sekundách, zobrazujeme s jednotkou "s"
+          lv_label_set_text(id(refresh_value), str_sprintf("%.0fs", (float)id(display_refresh_interval)).c_str());
+          // Screen-off: hodnota v sekundách, zobrazujeme "s" pro < 120s, jinak "min"
+          if (id(display_screenoff_interval) < 120) {
+            lv_label_set_text(id(screenoff_value), str_sprintf("%ds", id(display_screenoff_interval)).c_str());
+          } else {
+            lv_label_set_text(id(screenoff_value), str_sprintf("%.0fmin", (float)id(display_screenoff_interval) / 60.0).c_str());
+          }
 
           // Inicializuj WiFi toggle button
           if (id(wifi_enabled)) {

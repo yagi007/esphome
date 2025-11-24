@@ -1,6 +1,7 @@
 substitutions:
   device_name: "victronble03"
   friendly_name: "BLE Proxy 03"
+  version: "0.0.1"
 
   gpio_display_clk: GPIO18
   gpio_display_mosi: 23
@@ -76,10 +77,14 @@ esphome:
   friendly_name: ${device_name}
   comment: E-ink 4.2" ObiVan
   on_boot:
-    priority: -100  # Původní nastavení
+    priority: 600  # Vysoká priorita - inicializace displeje před ostatními komponentami
     then:
+      - logger.log: "=== BOOT: Zapínám napájení e-paper displeje ==="
       - output.turn_on: epaper_power
       - delay: 3s  # Stabilizace napájení e-paper
+      - logger.log: "=== BOOT: Inicializuji displej ==="
+      - component.update: eink_display
+      - delay: 1s
       - logger.log: "Systém načten - BLE scan bude automaticky spuštěn..."
       # BLE scan se spustí automaticky podle scan_parameters
       # Po dokončení BLE scanu se aktivuje koordinovaný script
@@ -118,12 +123,18 @@ ota:
     password: "bfbabbfdc66e057dceabd1ab4012ca02"
 
 wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
-  
-  # DŮLEŽITÉ: Pokud není WiFi, nezablokuj boot!
+  networks:
+    - ssid: !secret wifi_ssid
+      password: !secret wifi_password
+
+    - ssid: !secret wifi2_ssid
+      password: !secret wifi2_password  
+    
   fast_connect: true        # Rychlejší připojení
-  power_save_mode: HIGH     # Lepší stabilita BLE
+  power_save_mode: HIGH     # Lepší stabilita BLE    
+
+  # DŮLEŽITÉ: Pokud není WiFi, nezablokuj boot!
+
   
   # Fallback AP mode pokud se nelze připojit k hlavní WiFi
 
@@ -558,10 +569,13 @@ display:
 
     reset_pin: $gpio_display_reset
 
-    model: gdey042t81 
+    # Model pro GDEY042Z98 (4.2" 400x300 červený e-paper s řadičem SSD1683)
+    # Zkusíme nejdřív gdey042t81 (stejný řadič SSD1683)
+    model: gdey042t81  # Kompatibilní s GDEY042Z98 (oba používají SSD1683)
+    # Alternativně: model: 4.20in-bv2-bwr  # Pokud gdey042t81 nefunguje
     
     reset_duration: 200ms     # Delší reset pro stabilnější e-paper
-    update_interval: never    # Pouze manuální update ze scriptu
+    update_interval: never #30s     # Automatická aktualizace každých 30s
     rotation: 90°
     id: eink_display
     
@@ -636,7 +650,7 @@ display:
           }
 
           // Název systému uprostřed + sleep cycle info + joystick indikátor
-          it.printf(SCREEN_WIDTH/2, TOP_HEADER_Y+4, id(roboto), COLOR_OFF, TextAlign::TOP_CENTER, "PROXY #%d [J]", (int)id(sleep_cycles));
+          it.printf(SCREEN_WIDTH/2, TOP_HEADER_Y+4, id(roboto), COLOR_OFF, TextAlign::TOP_CENTER, "V #%d [J] 0.0.1", (int)id(sleep_cycles));
 
           // Čas a datum vpravo
           auto time = id(sntp_time).now();

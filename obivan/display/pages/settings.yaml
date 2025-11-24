@@ -172,16 +172,63 @@ lvgl:
                                                 text_color: 0xFFFFFF
                                           on_click:
                                             - lambda: |-
-                                                if (id(deep_sleep_timeout) > 60) {
-                                                  id(deep_sleep_timeout) -= 30;
-                                                  lv_label_set_text(id(deep_sleep_value), str_sprintf("%.0fmin", (float)id(deep_sleep_timeout)/60.0).c_str());
+                                                // Předdefinované hodnoty: 0 (OFF), 15s, 30s, 60s, 90s, 2min, 3min, 5min, 10min, 15min, 30min
+                                                int values[] = {0, 15, 30, 60, 90, 120, 180, 300, 600, 900, 1800};
+                                                int current = id(deep_sleep_timeout);
+                                                int new_value = current;
+                                                
+                                                // Najdi aktuální pozici v seznamu
+                                                int pos = -1;
+                                                for (int i = 0; i < 11; i++) {
+                                                  if (values[i] == current) {
+                                                    pos = i;
+                                                    break;
+                                                  }
+                                                }
+                                                
+                                                // Pokud není přesná shoda, najdi nejbližší menší
+                                                if (pos == -1) {
+                                                  for (int i = 10; i >= 0; i--) {
+                                                    if (values[i] < current) {
+                                                      pos = i;
+                                                      break;
+                                                    }
+                                                  }
+                                                }
+                                                
+                                                // Přejdi na předchozí hodnotu
+                                                if (pos > 0) {
+                                                  new_value = values[pos - 1];
+                                                  id(deep_sleep_timeout) = new_value;
+                                                } else if (pos == 0) {
+                                                  // Už jsme na minimu (0 = OFF)
+                                                  new_value = 0;
+                                                  id(deep_sleep_timeout) = 0;
+                                                }
+                                                
+                                                // Formátuj zobrazení
+                                                if (new_value == 0) {
+                                                  lv_label_set_text(id(deep_sleep_value), "OFF");
+                                                } else if (new_value < 120) {
+                                                  lv_label_set_text(id(deep_sleep_value), str_sprintf("%ds", new_value).c_str());
+                                                } else {
+                                                  lv_label_set_text(id(deep_sleep_value), str_sprintf("%.0fmin", (float)new_value / 60.0).c_str());
                                                 }
                                       - label:
                                           id: deep_sleep_value
-                                          text: !lambda 'return str_sprintf("%.0fmin", (float)id(deep_sleep_timeout)/60.0);'
+                                          text: !lambda |-
+                                            int val = id(deep_sleep_timeout);
+                                            if (val == 0) {
+                                              return "OFF";
+                                            } else if (val < 120) {
+                                              return str_sprintf("%ds", val);
+                                            } else {
+                                              return str_sprintf("%.0fmin", (float)val / 60.0);
+                                            }
                                           text_font: roboto
                                           text_color: 0x4CAF50
-                                          flex_grow: 1
+                                          width: 60
+                                          text_align: CENTER
                                       - button:
                                           id: deep_sleep_plus
                                           width: 32
@@ -199,9 +246,48 @@ lvgl:
                                                 text_color: 0xFFFFFF
                                           on_click:
                                             - lambda: |-
-                                                if (id(deep_sleep_timeout) < 3600) {
-                                                  id(deep_sleep_timeout) += 30;
-                                                  lv_label_set_text(id(deep_sleep_value), str_sprintf("%.0fmin", (float)id(deep_sleep_timeout)/60.0).c_str());
+                                                // Předdefinované hodnoty: 0 (OFF), 15s, 30s, 60s, 90s, 2min, 3min, 5min, 10min, 15min, 30min
+                                                int values[] = {0, 15, 30, 60, 90, 120, 180, 300, 600, 900, 1800};
+                                                int current = id(deep_sleep_timeout);
+                                                int new_value = current;
+                                                
+                                                // Najdi aktuální pozici v seznamu
+                                                int pos = -1;
+                                                for (int i = 0; i < 11; i++) {
+                                                  if (values[i] == current) {
+                                                    pos = i;
+                                                    break;
+                                                  }
+                                                }
+                                                
+                                                // Pokud není přesná shoda, najdi nejbližší menší hodnotu
+                                                if (pos == -1) {
+                                                  for (int i = 10; i >= 0; i--) {
+                                                    if (values[i] <= current) {
+                                                      pos = i;
+                                                      break;
+                                                    }
+                                                  }
+                                                  if (pos == -1) pos = 0; // Jsme pod minimem
+                                                }
+                                                
+                                                // Přejdi na další hodnotu
+                                                if (pos < 10) {
+                                                  new_value = values[pos + 1];
+                                                  id(deep_sleep_timeout) = new_value;
+                                                } else {
+                                                  // Už jsme na maximu (30min)
+                                                  new_value = 1800;
+                                                  id(deep_sleep_timeout) = 1800;
+                                                }
+                                                
+                                                // Formátuj zobrazení
+                                                if (new_value == 0) {
+                                                  lv_label_set_text(id(deep_sleep_value), "OFF");
+                                                } else if (new_value < 120) {
+                                                  lv_label_set_text(id(deep_sleep_value), str_sprintf("%ds", new_value).c_str());
+                                                } else {
+                                                  lv_label_set_text(id(deep_sleep_value), str_sprintf("%.0fmin", (float)new_value / 60.0).c_str());
                                                 }
 
                           # BLE Scan nastavení
@@ -438,17 +524,59 @@ lvgl:
                                                 text_color: 0xFFFFFF
                                           on_click:
                                             - lambda: |-
-                                                if (id(display_screenoff_interval) > 30) {
-                                                  id(display_screenoff_interval) -= 30;
-                                                  float minutes = id(display_screenoff_interval) / 60.0;
-                                                  lv_label_set_text(id(screenoff_value), str_sprintf("%.1fm", minutes).c_str());
+                                                // Předdefinované hodnoty: 0s, 15s, 30s, 60s, 90s, 2min, 3min, 5min, 10min, 15min, 30min
+                                                int values[] = {0, 15, 30, 60, 90, 120, 180, 300, 600, 900, 1800};
+                                                int current = id(display_screenoff_interval);
+                                                int new_value = current;
+                                                
+                                                // Najdi aktuální pozici v seznamu
+                                                int pos = -1;
+                                                for (int i = 0; i < 11; i++) {
+                                                  if (values[i] == current) {
+                                                    pos = i;
+                                                    break;
+                                                  }
+                                                }
+                                                
+                                                // Pokud není přesná shoda, najdi nejbližší menší
+                                                if (pos == -1) {
+                                                  for (int i = 10; i >= 0; i--) {
+                                                    if (values[i] < current) {
+                                                      pos = i;
+                                                      break;
+                                                    }
+                                                  }
+                                                }
+                                                
+                                                // Přejdi na předchozí hodnotu
+                                                if (pos > 0) {
+                                                  new_value = values[pos - 1];
+                                                  id(display_screenoff_interval) = new_value;
+                                                } else if (pos == 0) {
+                                                  // Už jsme na minimu (0s)
+                                                  new_value = 0;
+                                                  id(display_screenoff_interval) = 0;
+                                                }
+                                                
+                                                // Formátuj zobrazení
+                                                if (new_value < 120) {
+                                                  lv_label_set_text(id(screenoff_value), str_sprintf("%ds", new_value).c_str());
+                                                } else {
+                                                  lv_label_set_text(id(screenoff_value), str_sprintf("%.0fmin", (float)new_value / 60.0).c_str());
                                                 }
                                       - label:
                                           id: screenoff_value
-                                          text: !lambda 'return str_sprintf("%.1fm", (float)id(display_screenoff_interval) / 60.0);'
+                                          text: !lambda |-
+                                            int val = id(display_screenoff_interval);
+                                            if (val < 120) {
+                                              return str_sprintf("%ds", val);
+                                            } else {
+                                              return str_sprintf("%.0fmin", (float)val / 60.0);
+                                            }
                                           text_font: roboto
                                           text_color: 0xFF9800
-                                          flex_grow: 1
+                                          width: 60
+                                          text_align: CENTER
                                       - button:
                                           id: screenoff_plus
                                           width: 32
@@ -466,10 +594,46 @@ lvgl:
                                                 text_color: 0xFFFFFF
                                           on_click:
                                             - lambda: |-
-                                                if (id(display_screenoff_interval) < 1800) {
-                                                  id(display_screenoff_interval) += 30;
-                                                  float minutes = id(display_screenoff_interval) / 60.0;
-                                                  lv_label_set_text(id(screenoff_value), str_sprintf("%.1fm", minutes).c_str());
+                                                // Předdefinované hodnoty: 0s, 15s, 30s, 60s, 90s, 2min, 3min, 5min, 10min, 15min, 30min
+                                                int values[] = {0, 15, 30, 60, 90, 120, 180, 300, 600, 900, 1800};
+                                                int current = id(display_screenoff_interval);
+                                                int new_value = current;
+                                                
+                                                // Najdi aktuální pozici v seznamu
+                                                int pos = -1;
+                                                for (int i = 0; i < 11; i++) {
+                                                  if (values[i] == current) {
+                                                    pos = i;
+                                                    break;
+                                                  }
+                                                }
+                                                
+                                                // Pokud není přesná shoda, najdi nejbližší menší hodnotu
+                                                if (pos == -1) {
+                                                  for (int i = 10; i >= 0; i--) {
+                                                    if (values[i] <= current) {
+                                                      pos = i;
+                                                      break;
+                                                    }
+                                                  }
+                                                  if (pos == -1) pos = 0; // Jsme pod minimem
+                                                }
+                                                
+                                                // Přejdi na další hodnotu
+                                                if (pos < 10) {
+                                                  new_value = values[pos + 1];
+                                                  id(display_screenoff_interval) = new_value;
+                                                } else {
+                                                  // Už jsme na maximu (30min)
+                                                  new_value = 1800;
+                                                  id(display_screenoff_interval) = 1800;
+                                                }
+                                                
+                                                // Formátuj zobrazení
+                                                if (new_value < 120) {
+                                                  lv_label_set_text(id(screenoff_value), str_sprintf("%ds", new_value).c_str());
+                                                } else {
+                                                  lv_label_set_text(id(screenoff_value), str_sprintf("%.0fmin", (float)new_value / 60.0).c_str());
                                                 }
 
                           # WiFi nastavení
@@ -567,10 +731,22 @@ lvgl:
                         // Update UI s dynamickými hodnotami
                         lv_slider_set_value(id(brightness_slider), ${default_display_brightness}, LV_ANIM_OFF);
                         lv_label_set_text(id(brightness_value), "${default_display_brightness}%");
-                        lv_label_set_text(id(deep_sleep_value), str_sprintf("%.0fmin", (float)${default_deep_sleep_timeout}/60.0).c_str());
+                        // Formátuj deep sleep podle hodnoty
+                        if (${default_deep_sleep_timeout} == 0) {
+                          lv_label_set_text(id(deep_sleep_value), "OFF");
+                        } else if (${default_deep_sleep_timeout} < 120) {
+                          lv_label_set_text(id(deep_sleep_value), str_sprintf("%ds", ${default_deep_sleep_timeout}).c_str());
+                        } else {
+                          lv_label_set_text(id(deep_sleep_value), str_sprintf("%.0fmin", (float)${default_deep_sleep_timeout}/60.0).c_str());
+                        }
                         lv_label_set_text(id(ble_scan_value), "${default_ble_scan_interval}s");
                         lv_label_set_text(id(refresh_value), "${default_display_refresh_interval}s");
-                        lv_label_set_text(id(screenoff_value), str_sprintf("%.1fm", (float)${default_display_screenoff_interval} / 60.0).c_str());
+                        // Formátuj screen-off podle hodnoty
+                        if (${default_display_screenoff_interval} < 120) {
+                          lv_label_set_text(id(screenoff_value), str_sprintf("%ds", ${default_display_screenoff_interval}).c_str());
+                        } else {
+                          lv_label_set_text(id(screenoff_value), str_sprintf("%.0fmin", (float)${default_display_screenoff_interval} / 60.0).c_str());
+                        }
                         lv_label_set_text(id(wifi_btn_label), "ON");
                         lv_obj_set_style_bg_color(id(wifi_toggle_btn), lv_color_hex(0x4CAF50), 0);
 

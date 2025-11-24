@@ -4,11 +4,14 @@
 # =========================================
 
 # Deep Sleep Component
+# POZNÁMKA: wakeup_pin není nastaven v komponentě kvůli konfliktu s touchscreen interrupt pin (GPIO4)
+# Místo toho se GPIO0 (boot tlačítko) nastavuje programově jako wakeup pin v prepare_deep_sleep scriptu
+# GPIO0 je RTC GPIO pin a boot tlačítko je spolehlivé řešení - probudí ESP stisknutím boot tlačítka
+# Timer wakeup slouží jako backup - probudí ESP po 12h i bez stisku tlačítka (prevence zaseknutí)
 deep_sleep:
   id: deep_sleep_ctrl
-  wakeup_pin: GPIO6 # GPIO6 is touch interrupt pin
-  wakeup_pin_mode: INVERT_WAKEUP # Wake up on LOW (touch event)
-  sleep_duration: 12h # Maximum sleep duration as backup
+  # wakeup_pin se nastavuje programově v prepare_deep_sleep scriptu (krok 7) - GPIO0 (boot button), LOW trigger
+  sleep_duration: 12h # Backup timer wakeup - probudí ESP po 12h i bez stisku tlačítka (prevence zaseknutí)
 
 # Power Management Scripts
 script:
@@ -64,6 +67,10 @@ script:
           gpio_pulldown_dis((gpio_num_t)8);
           gpio_pullup_dis((gpio_num_t)9);
           gpio_pulldown_dis((gpio_num_t)9);
+          
+          // DŮLEŽITÉ: GPIO0 (boot tlačítko) bude nakonfigurován jako wakeup pin programově v kroku 7
+          // GPIO0 je RTC GPIO pin a boot tlačítko je spolehlivé řešení pro wakeup z deep sleepu
+          ESP_LOGI("deep_sleep", "GPIO0 (boot button) will be configured as wakeup pin in step 7");
           ESP_LOGI("deep_sleep", "GPIO pins configured for low power");
 
       # 6. CPU frequency reduction
@@ -72,8 +79,24 @@ script:
           // Note: CPU frequency reduction for deep sleep
           ESP_LOGI("deep_sleep", "Preparing for deep sleep - CPU freq would be reduced");
 
+      # 7. Programově nastavit GPIO0 (boot tlačítko) jako wakeup pin
+      - logger.log: "Step 7: Configuring GPIO0 (boot button) as wakeup pin programmatically"
+      - lambda: |-
+          // GPIO0 je RTC GPIO pin a je připojený k boot tlačítku - spolehlivé řešení pro wakeup
+          // Nastavíme ho programově jako wakeup pin pomocí ESP-IDF API
+          // ESP-IDF hlavičky jsou dostupné automaticky v ESPHome
+          // Boot tlačítko je aktivní LOW (stisknutí = LOW), takže 0 = LOW trigger
+          esp_err_t ret = esp_sleep_enable_ext0_wakeup(GPIO_NUM_0, 0); // 0 = LOW level triggers wakeup
+          if (ret == ESP_OK) {
+            ESP_LOGI("deep_sleep", "GPIO0 (boot button) configured as wakeup pin (LOW trigger)");
+            ESP_LOGI("deep_sleep", "Device can be woken up by pressing boot button");
+          } else {
+            ESP_LOGE("deep_sleep", "Failed to configure GPIO0 as wakeup pin: %s", esp_err_to_name(ret));
+            ESP_LOGE("deep_sleep", "Error code: %d", ret);
+          }
+
       - delay: 1s
-      - logger.log: "Step 7: ENTERING DEEP SLEEP"
+      - logger.log: "Step 8: ENTERING DEEP SLEEP"
       - deep_sleep.enter: deep_sleep_ctrl
 
   # Screen OFF mode for power saving
