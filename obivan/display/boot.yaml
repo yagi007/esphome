@@ -56,11 +56,22 @@ script:
       - script.execute: update_bootscreen_progress
       - script.execute: apply_brightness
       - delay: 1s
+      # Aktualizuj čas z RTC okamžitě při bootu (nečekáme na interval)
+      - script.execute: update_datetime
       - script.execute: hide_bootscreen
 
       - lambda: |-
           ESP_LOGW("boot", "System started in offline mode - WiFi will keep trying to connect");
           // Necháváme wifi_enabled = true pro další pokusy o připojení
+          // Zkontroluj RTC čas
+          auto rtc_now = id(rtc_time).now();
+          if (rtc_now.is_valid()) {
+            ESP_LOGI("rtc", "RTC time at boot: %04d-%02d-%02d %02d:%02d:%02d",
+                     rtc_now.year, rtc_now.month, rtc_now.day_of_month,
+                     rtc_now.hour, rtc_now.minute, rtc_now.second);
+          } else {
+            ESP_LOGW("rtc", "RTC time not valid at boot");
+          }
 
       - logger.log: "Boot sequence completed (offline mode)"
 
@@ -74,11 +85,22 @@ script:
       - script.execute: update_bootscreen_progress
       - script.execute: apply_brightness
       - delay: 1s
+      # Aktualizuj čas z RTC okamžitě při bootu (nečekáme na interval)
+      - script.execute: update_datetime
       - script.execute: hide_bootscreen
 
       - lambda: |-
           ESP_LOGI("boot", "System started successfully with WiFi");
           id(wifi_enabled) = true;
+          // Zkontroluj RTC čas
+          auto rtc_now = id(rtc_time).now();
+          if (rtc_now.is_valid()) {
+            ESP_LOGI("rtc", "RTC time at boot: %04d-%02d-%02d %02d:%02d:%02d",
+                     rtc_now.year, rtc_now.month, rtc_now.day_of_month,
+                     rtc_now.hour, rtc_now.minute, rtc_now.second);
+          } else {
+            ESP_LOGW("rtc", "RTC time not valid at boot");
+          }
 
       - logger.log: "Boot sequence completed (online mode)"
 

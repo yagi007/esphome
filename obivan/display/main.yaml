@@ -90,16 +90,28 @@ script:
       - lvgl.label.update:
           id: header_time
           text: !lambda |-
-            auto now = id(sntp_time).now();
+            auto now = id(rtc_time).now();
             static char time_buf[16];
-            snprintf(time_buf, sizeof(time_buf), "%02d:%02d", now.hour, now.minute);
+            if (now.is_valid()) {
+              snprintf(time_buf, sizeof(time_buf), "%02d:%02d", now.hour, now.minute);
+            } else {
+              // Pokud RTC čas není validní, zobraz "--:--"
+              snprintf(time_buf, sizeof(time_buf), "--:--");
+              ESP_LOGW("rtc", "RTC time not valid in update_datetime");
+            }
             return time_buf;
       - lvgl.label.update:
           id: header_date
           text: !lambda |-
-            auto now = id(sntp_time).now();
+            auto now = id(rtc_time).now();
             static char date_buf[16];
-            snprintf(date_buf, sizeof(date_buf), "%02d.%02d", now.day_of_month, now.month);
+            if (now.is_valid()) {
+              snprintf(date_buf, sizeof(date_buf), "%02d.%02d", now.day_of_month, now.month);
+            } else {
+              // Pokud RTC čas není validní, zobraz "--.--"
+              snprintf(date_buf, sizeof(date_buf), "--.--");
+              ESP_LOGW("rtc", "RTC date not valid in update_datetime");
+            }
             return date_buf;
 
   - id: update_device_status

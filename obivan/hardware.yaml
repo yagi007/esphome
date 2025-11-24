@@ -108,6 +108,8 @@ i2c:
   scan: true
   id: bus_a
 
+# DS3231 RTC je konfigurován v network.yaml v sekci time
+
 # Backlight
 # GPIO16 is mapped to RS-485 output port, pin A
 # This GPIO should be wired to the solderpad on the right of the ESP32-S3 module, next to its antenna, below 2 * 0603 ceramic capacitors

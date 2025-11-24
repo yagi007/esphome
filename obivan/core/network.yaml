@@ -26,15 +26,58 @@ wifi:
   #  subnet: 255.255.252.0
   #output_power: 17dB
 
-  # MDNS Discovery (disabled for power saving)
+  # Synchronizace RTC při připojení WiFi
+  # SNTP automaticky synchronizuje při připojení, RTC se aktualizuje v on_time_sync callbacku
+  on_connect:
+    then:
+      - logger.log: "WiFi connected - SNTP will synchronize RTC time automatically"
+      - delay: 5s  # Počkat na stabilizaci WiFi připojení a SNTP synchronizaci
+      - lambda: |-
+          // SNTP automaticky synchronizuje při připojení WiFi
+          // RTC se aktualizuje v on_time_sync callbacku SNTP (řádek 64-75)
+          ESP_LOGI("rtc", "WiFi connected - SNTP sync will update RTC automatically");
+      # Aktualizuj čas na displeji po synchronizaci (pokud je script dostupný)
+      - delay: 2s  # Počkat na dokončení SNTP synchronizace
+      - script.execute: update_datetime
+
+# MDNS Discovery (disabled for power saving)
 mdns:
   disabled: true
 
-# Network Time Protocol
+# Time Configuration - Primární RTC, sekundární SNTP synchronizace
+# DS3231 RTC je primární zdroj času (funguje i bez WiFi)
+# SNTP synchronizuje RTC když je WiFi dostupné
 time:
+  # Primární zdroj: DS3231 RTC hodiny (LaskaKit DS3231, I2C adresa 0x68)
+  - platform: ds1307
+    id: rtc_time
+    i2c_id: bus_a
+    timezone: Europe/Prague
+    on_time_sync:
+      then:
+        - logger.log: "RTC time synchronized"
+  
+  # Sekundární zdroj: SNTP pro synchronizaci RTC (když je WiFi dostupné)
   - platform: sntp
     id: sntp_time
     timezone: Europe/Prague
+    servers:
+      - "pool.ntp.org"
+      - "time.nist.gov"
+      - "0.pool.ntp.org"
+    on_time_sync:
+      then:
+        - logger.log: "SNTP time synchronized - updating RTC"
+        - ds1307.write_time:
+            id: rtc_time
+        - lambda: |-
+            // Zapiš log o aktualizaci RTC (čas je už zapsán akcí ds1307.write_time)
+            auto rtc_time_now = id(rtc_time).now();
+            if (rtc_time_now.is_valid()) {
+              ESP_LOGI("rtc", "RTC updated from SNTP: %04d-%02d-%02d %02d:%02d:%02d",
+                       rtc_time_now.year, rtc_time_now.month, rtc_time_now.day_of_month,
+                       rtc_time_now.hour, rtc_time_now.minute, rtc_time_now.second);
+            }
 
 # homeassistant API
 api:
@@ -45,6 +88,10 @@ api:
 ota:
   - platform: esphome
     password: !secret ota_password
+
+# POZNÁMKA: Synchronizace RTC probíhá automaticky při připojení WiFi
+# SNTP komponenta má on_time_sync callback, který zapisuje čas do RTC
+# Není potřeba periodický interval - synchronizace proběhne hned při WiFi připojení
 
 # WiFi Signal Strength Sensor
 sensor:
