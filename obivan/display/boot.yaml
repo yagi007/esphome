@@ -18,51 +18,37 @@ script:
       - lvgl.resume:
       - lvgl.page.show: page_bootscreen
       - script.execute: init_system_values
+      - script.execute: update_datetime
 
       # Boot progress
-      - delay: 2s
+      - delay: 1s
       - lambda: |-
           ESP_LOGI("boot", "Boot sequence: Display initialized");
 
-      - logger.log: "Boot: Starting network services..."
+      # Spusť WiFi na pozadí (nečekáme na připojení - RTC máme, WiFi není kritické)
+      - logger.log: "Boot: Starting WiFi in background (non-blocking)..."
       - wifi.enable:
       - script.execute: update_bootscreen_progress
-      - delay: 1s
-      - script.execute: update_bootscreen_progress
-      - delay: 5s
-      - script.execute: update_bootscreen_progress
-      - delay: 8s
-      - script.execute: update_bootscreen_progress
-      - delay: 5s
+      
+      # Okamžitě pokračuj - WiFi se připojí na pozadí
+      # RTC čas je dostupný, WiFi není potřeba pro zobrazení
+      - logger.log: "Boot: Continuing immediately - WiFi will connect in background"
+      - script.execute: continue_boot_offline
 
-      # Check connectivity and continue
-      - if:
-          condition:
-            wifi.connected:
-          then:
-            - logger.log: "Boot: WiFi connected - continuing normal boot"
-            - script.execute: continue_normal_boot
-          else:
-            - logger.log: "Boot: No WiFi connection - continuing offline boot"
-            - script.execute: continue_boot_offline
-
-  # Continue boot sequence when offline
+  # Rychlý boot - WiFi se připojuje na pozadí, nečekáme na něj
+  # RTC čas je dostupný okamžitě, WiFi není kritické pro zobrazení
   - id: continue_boot_offline
     then:
-      - logger.log: "=== CONTINUING BOOT IN OFFLINE MODE ==="
+      - logger.log: "=== FAST BOOT - WiFi connecting in background ==="
 
       - script.execute: update_bootscreen_progress
-      - delay: 1s
-      - script.execute: update_bootscreen_progress
       - script.execute: apply_brightness
-      - delay: 1s
-      # Aktualizuj čas z RTC okamžitě při bootu (nečekáme na interval)
-      - script.execute: update_datetime
+      # hide_bootscreen už obsahuje update_datetime hned po zobrazení stránky
       - script.execute: hide_bootscreen
 
       - lambda: |-
-          ESP_LOGW("boot", "System started in offline mode - WiFi will keep trying to connect");
-          // Necháváme wifi_enabled = true pro další pokusy o připojení
+          ESP_LOGI("boot", "System started - WiFi connecting in background");
+          // WiFi se připojí na pozadí a automaticky synchronizuje RTC když se připojí
           // Zkontroluj RTC čas
           auto rtc_now = id(rtc_time).now();
           if (rtc_now.is_valid()) {
@@ -73,36 +59,7 @@ script:
             ESP_LOGW("rtc", "RTC time not valid at boot");
           }
 
-      - logger.log: "Boot sequence completed (offline mode)"
-
-  # Continue boot sequence when online
-  - id: continue_normal_boot
-    then:
-      - logger.log: "=== CONTINUING BOOT WITH NETWORK ==="
-
-      - script.execute: update_bootscreen_progress
-      - delay: 1s
-      - script.execute: update_bootscreen_progress
-      - script.execute: apply_brightness
-      - delay: 1s
-      # Aktualizuj čas z RTC okamžitě při bootu (nečekáme na interval)
-      - script.execute: update_datetime
-      - script.execute: hide_bootscreen
-
-      - lambda: |-
-          ESP_LOGI("boot", "System started successfully with WiFi");
-          id(wifi_enabled) = true;
-          // Zkontroluj RTC čas
-          auto rtc_now = id(rtc_time).now();
-          if (rtc_now.is_valid()) {
-            ESP_LOGI("rtc", "RTC time at boot: %04d-%02d-%02d %02d:%02d:%02d",
-                     rtc_now.year, rtc_now.month, rtc_now.day_of_month,
-                     rtc_now.hour, rtc_now.minute, rtc_now.second);
-          } else {
-            ESP_LOGW("rtc", "RTC time not valid at boot");
-          }
-
-      - logger.log: "Boot sequence completed (online mode)"
+      - logger.log: "Boot sequence completed - system ready"
 
   # Initialize system values from NVS (uses LVGL components)
   - id: init_system_values

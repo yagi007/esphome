@@ -30,6 +30,8 @@ script:
     then:
       - lvgl.page.show: page_overview
       - delay: 50ms
+      # Aktualizuj čas z RTC okamžitě po zobrazení hlavní stránky (priorita)
+      - script.execute: update_datetime
       - lvgl.widget.hide: page_bootscreen
       - delay: 50ms
       - logger.log: "Bootscreen hidden, showing main UI"
