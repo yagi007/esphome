@@ -33,6 +33,9 @@ globals:
   - id: low_power_cpu_mode
     type: bool
     initial_value: "false"
+  - id: ble_scan_active
+    type: bool
+    initial_value: "true" # ESP32 BLE tracker starts scanning by default
 
 # System Scripts
 script:

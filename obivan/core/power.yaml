@@ -33,9 +33,18 @@ script:
       - delay: 1s # Důležité - čekat až se WiFi úplně vypne
 
       # 3. Vypni BLE
-      - logger.log: "Step 3: BLE cleanup"
-      - esp32_ble_tracker.stop_scan:
-      - delay: 500ms
+      - if:
+          condition:
+            lambda: "return id(ble_scan_active);"
+          then:
+            - logger.log: "Step 3: BLE cleanup"
+            - esp32_ble_tracker.stop_scan:
+            - delay: 500ms
+            - globals.set:
+                id: ble_scan_active
+                value: "false"
+          else:
+            - logger.log: "Step 3: BLE already stopped - skipping cleanup"
 
       # 4. **KLÍČOVÉ: Vypni I2C periferie**
       - logger.log: "Step 4: I2C peripherals cleanup"
@@ -200,13 +209,24 @@ script:
           ESP_LOGI("screen_off", "I2C traffic minimization applied for power saving");
 
       # 13. BLE tracker complete stop
-      - logger.log: "Step 13: Stopping BLE tracker completely"
-      - lambda: |-
-          ESP_LOGI("ble_debug", "BLE STOP: About to stop BLE tracker...");
-      - esp32_ble_tracker.stop_scan:
-      - delay: 500ms
-      - lambda: |-
-          ESP_LOGI("ble_debug", "BLE STOP: Checking if BLE scanner is actually stopped...");
+      - if:
+          condition:
+            lambda: "return id(ble_scan_active);"
+          then:
+            - logger.log: "Step 13: Stopping BLE tracker completely"
+            - lambda: |-
+                ESP_LOGI("ble_debug", "BLE STOP: About to stop BLE tracker...");
+            - esp32_ble_tracker.stop_scan:
+            - delay: 500ms
+            - lambda: |-
+                ESP_LOGI("ble_debug", "BLE STOP: Checking if BLE scanner is actually stopped...");
+            - globals.set:
+                id: ble_scan_active
+                value: "false"
+          else:
+            - logger.log: "Step 13: BLE tracker already idle - skipping stop"
+            - lambda: |-
+                ESP_LOGI("ble_debug", "BLE STOP: Skipping stop - tracker already idle");
 
       # Final power optimization status
       - logger.log: "=== SCREEN OFF DEBUG: Target consumption 50-80mA ==="
@@ -307,6 +327,9 @@ script:
       - lambda: |-
           ESP_LOGI("ble_debug", "SCREEN ON: About to restart BLE tracker...");
       - esp32_ble_tracker.start_scan:
+      - globals.set:
+          id: ble_scan_active
+          value: "true"
       - delay: 500ms
       - lambda: |-
           ESP_LOGI("ble_debug", "SCREEN ON: BLE tracker restarted successfully");

@@ -15,7 +15,9 @@ esp32_ble_tracker:
       # Kontrolovaně vypni BLE po získání dat pro úsporu energie
       - lambda: |-
           ESP_LOGI("ble", "Attempting graceful BLE stop after scan completion");
-      - esp32_ble_tracker.stop_scan:
+      - globals.set:
+          id: ble_scan_active
+          value: "false"
 
 #bluetooth_proxy:
 #  active: true
