@@ -99,6 +99,8 @@ script:
           } else {
             lv_label_set_text(id(screenoff_value), str_sprintf("%.0fmin", (float)id(display_screenoff_interval) / 60.0).c_str());
           }
+          // Kapacita baterie
+          lv_label_set_text(id(battery_capacity_value), str_sprintf("%dAh", id(battery_nominal_capacity)).c_str());
 
           // Inicializuj WiFi toggle button
           if (id(wifi_enabled)) {

@@ -356,11 +356,15 @@ script:
       - lvgl.label.update:
           id: battery_capacity
           text: !lambda |-
-            const float BATTERY_NOMINAL = 150.0;
+            float battery_nominal = (float)id(battery_nominal_capacity);
+            if (battery_nominal <= 0.0f) {
+              battery_nominal = 150.0f;
+            }
             float consumed = id(shunt_consumed_ah).has_state() ? id(shunt_consumed_ah).state : 0;
-            float remaining = BATTERY_NOMINAL - consumed;
+            float remaining = battery_nominal - consumed;
+            if (remaining < 0) remaining = 0;
             static char cap_buf[16];
-            snprintf(cap_buf, sizeof(cap_buf), "%.0f/%.0fAh", remaining, BATTERY_NOMINAL);
+            snprintf(cap_buf, sizeof(cap_buf), "%.0f/%.0fAh", remaining, battery_nominal);
             return cap_buf;
 
   - id: update_solar_data
