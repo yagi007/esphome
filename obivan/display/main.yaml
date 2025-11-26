@@ -366,9 +366,11 @@ script:
             if (battery_nominal <= 0.0f) {
               battery_nominal = 150.0f;
             }
-            float consumed = id(shunt_consumed_ah).has_state() ? id(shunt_consumed_ah).state : 0;
-            float remaining = battery_nominal - consumed;
-            if (remaining < 0) remaining = 0;
+            // Použij SOC pro výpočet aktuální kapacity (přesnější než consumed_ah)
+            float soc = id(shunt_soc).has_state() ? id(shunt_soc).state : 0.0f;
+            if (soc < 0.0f) soc = 0.0f;
+            if (soc > 100.0f) soc = 100.0f;
+            float remaining = (soc / 100.0f) * battery_nominal;
             static char cap_buf[16];
             snprintf(cap_buf, sizeof(cap_buf), "%.0f/%.0fAh", remaining, battery_nominal);
             return cap_buf;
