@@ -538,12 +538,12 @@ script:
               snprintf(buf, sizeof(buf), "--°C  --%%");
             }
             return buf;
-          text_color: 0x00BCD4
+          text_color: 0xFFFFFF
       # Exteriér: Teplota a vlhkost na jednom řádku (placeholder - pro budoucí senzor)
       - lvgl.label.update:
           id: outdoor_temp_hum
           text: "--°C  --%"
-          text_color: 0x666666
+          text_color: 0xFFFFFF
 
   - id: update_main_dashboard
     then:

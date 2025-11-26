@@ -35,7 +35,7 @@ lvgl:
                   y: 16
                   width: 200
                   height: 158
-                  bg_color: 0x0A0A0A
+                  bg_color: 0x331F00
                   bg_opa: COVER
                   radius: 8
                   pad_all: 10
@@ -58,22 +58,22 @@ lvgl:
                         align: LEFT_MID
                         y: -10
                         text: "0W"
-                        text_font: roboto_big
-                        text_color: 0xFF9800
+                        text_font: roboto_huge
+                        text_color: 0xFFFFFF
                     - label:
                         id: solar_battery_current
                         align: LEFT_MID
                         y: 15
                         text: "> 0.0A"
                         text_font: roboto
-                        text_color: 0x4CAF50
+                        text_color: 0xFFFFFF
                     - label:
                         id: solar_yield_today
                         align: BOTTOM_RIGHT
                         y: -6
                         text: "0.0kWh"
                         text_font: roboto_sm
-                        text_color: 0xCCCCCC
+                        text_color: 0xFFFFFF
 
               # Levý dolní: DC/DC
               - obj: # dcdc_card
@@ -82,7 +82,7 @@ lvgl:
                   y: 190
                   width: 200
                   height: 158
-                  bg_color: 0x0A0A0A
+                  bg_color: 0x14334D
                   bg_opa: COVER
                   radius: 8
                   pad_all: 10
@@ -105,22 +105,22 @@ lvgl:
                         align: LEFT_MID
                         y: -10
                         text: "0W"
-                        text_font: roboto_big
-                        text_color: 0x2196F3
+                        text_font: roboto_huge
+                        text_color: 0xFFFFFF
                     - label:
                         id: dcdc_output_current
                         align: LEFT_MID
                         y: 15
                         text: "> 0.0A"
                         text_font: roboto
-                        text_color: 0x4CAF50
+                        text_color: 0xFFFFFF
                     - label:
                         id: dcdc_efficiency
                         align: BOTTOM_RIGHT
                         y: -6
                         text: "0%"
                         text_font: roboto_sm
-                        text_color: 0xCCCCCC
+                        text_color: 0xFFFFFF
 
               # Střed: Battery
               - obj: # battery_main_card
@@ -129,7 +129,7 @@ lvgl:
                   y: 16
                   width: 236
                   height: 296
-                  bg_color: 0x111111
+                  bg_color: 0x331F14
                   bg_opa: COVER
                   radius: 12
                   pad_all: 16
@@ -156,7 +156,7 @@ lvgl:
                         x: 0
                         y: 36
                         width: 204
-                        height: 44
+                        height: 60
                         radius: 6
                         bg_color: 0x222222
                         bg_opa: COVER
@@ -168,7 +168,7 @@ lvgl:
                         x: 0
                         y: 36
                         width: 0
-                        height: 44
+                        height: 60
                         radius: 6
                         bg_color: 0x4CAF50
                         bg_opa: COVER
@@ -179,16 +179,16 @@ lvgl:
                         x: 0
                         y: 48
                         text: "0%"
-                        text_font: roboto_big
+                        text_font: roboto_huge
                         text_color: 0xFFFFFF
                     - label:
                         id: battery_capacity
                         align: TOP_MID
                         x: 0
-                        y: 86
+                        y: 102
                         text: "0/150Ah"
                         text_font: roboto_sm
-                        text_color: 0xCCCCCC
+                        text_color: 0xFFFFFF
                     - label:
                         id: battery_voltage
                         align: BOTTOM_RIGHT
@@ -204,7 +204,7 @@ lvgl:
                         y: -34
                         text: "0.0A"
                         text_font: roboto
-                        text_color: 0xCCCCCC
+                        text_color: 0xFFFFFF
                     - label:
                         id: load_daily
                         align: BOTTOM_RIGHT
@@ -212,7 +212,7 @@ lvgl:
                         y: -10
                         text: "0W"
                         text_font: roboto
-                        text_color: 0xCCCCCC
+                        text_color: 0xFFFFFF
                     - label:
                         id: battery_remaining
                         align: BOTTOM_RIGHT
@@ -220,7 +220,7 @@ lvgl:
                         y: -82
                         text: "∞"
                         text_font: roboto
-                        text_color: 0xCCCCCC
+                        text_color: 0xFFFFFF
 
               # Pravý horní: Temperature & Humidity (Interiér + Exteriér)
               - obj: # temperature_card
@@ -229,7 +229,7 @@ lvgl:
                   y: 16
                   width: 200
                   height: 158
-                  bg_color: 0x0A0A0A
+                  bg_color: 0x14334D
                   bg_opa: COVER
                   radius: 8
                   pad_all: 10
@@ -254,7 +254,7 @@ lvgl:
                         y: -20
                         text: "--°C  --%"
                         text_font: roboto
-                        text_color: 0x00BCD4
+                        text_color: 0xFFFFFF
                     # Druhý řádek: Exteriér - teplota a vlhkost
                     - label:
                         id: outdoor_temp_hum
@@ -262,13 +262,13 @@ lvgl:
                         y: 10
                         text: "--°C  --%"
                         text_font: roboto
-                        text_color: 0x666666
+                        text_color: 0xFFFFFF
                     - label:
                         align: BOTTOM_LEFT
                         y: -6
                         text: "BME280"
                         text_font: roboto_sm
-                        text_color: 0x666666
+                        text_color: 0xFFFFFF
 
               # Pravý dolní: Loads
               - obj: # load_card
@@ -277,7 +277,7 @@ lvgl:
                   y: 190
                   width: 200
                   height: 158
-                  bg_color: 0x0A0A0A
+                  bg_color: 0x331F33
                   bg_opa: COVER
                   radius: 8
                   pad_all: 10
@@ -300,22 +300,22 @@ lvgl:
                         align: LEFT_MID
                         y: -10
                         text: "0W"
-                        text_font: roboto_big
-                        text_color: 0x9C27B0
+                        text_font: roboto_huge
+                        text_color: 0xFFFFFF
                     - label:
                         id: load_current #  load_current
                         align: LEFT_MID
                         y: 15
                         text: "0.0A <"
                         text_font: roboto
-                        text_color: 0xFF5722
+                        text_color: 0xFFFFFF
                     - label:
                         id: battery_power # load_daily
                         align: BOTTOM_RIGHT
                         y: -6
                         text: "0.0kWh"
                         text_font: roboto_sm
-                        text_color: 0xCCCCCC
+                        text_color: 0xFFFFFF
 
               # Overlay s jednoduchými linkami (pevné souřadnice)
               - obj:
