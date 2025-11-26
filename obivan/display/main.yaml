@@ -270,15 +270,21 @@ script:
 
       # Update WiFi toggle button in system page
       - lambda: |-
-          // Update WiFi toggle button status
-          if (id(wifi_enabled)) {
-            lv_obj_set_style_bg_color(id(wifi_toggle_btn), lv_color_hex(0x4CAF50), LV_PART_MAIN);
-            lv_label_set_text(id(wifi_btn_label), "ZAPNUTO");
-            ESP_LOGI("wifi_ui", "WiFi toggle button updated to ENABLED state");
-          } else {
-            lv_obj_set_style_bg_color(id(wifi_toggle_btn), lv_color_hex(0xFF5722), LV_PART_MAIN);
-            lv_label_set_text(id(wifi_btn_label), "VYPNUTO");
-            ESP_LOGI("wifi_ui", "WiFi toggle button updated to DISABLED state");
+          static bool initialized = false;
+          static bool last_state = false;
+          bool current = id(wifi_enabled);
+          if (!initialized || current != last_state) {
+            if (current) {
+              lv_obj_set_style_bg_color(id(wifi_toggle_btn), lv_color_hex(0x4CAF50), LV_PART_MAIN);
+              lv_label_set_text(id(wifi_btn_label), "ZAPNUTO");
+              ESP_LOGI("wifi_ui", "WiFi toggle button updated to ENABLED state");
+            } else {
+              lv_obj_set_style_bg_color(id(wifi_toggle_btn), lv_color_hex(0xFF5722), LV_PART_MAIN);
+              lv_label_set_text(id(wifi_btn_label), "VYPNUTO");
+              ESP_LOGI("wifi_ui", "WiFi toggle button updated to DISABLED state");
+            }
+            initialized = true;
+            last_state = current;
           }
 
   - id: update_battery_data
