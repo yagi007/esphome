@@ -222,11 +222,59 @@ lvgl:
                         text_font: roboto
                         text_color: 0xCCCCCC
 
-              # Pravý: Loads
+              # Pravý horní: Temperature & Humidity (Interiér + Exteriér)
+              - obj: # temperature_card
+                  id: temperature_card
+                  x: 560
+                  y: 16
+                  width: 200
+                  height: 158
+                  bg_color: 0x0A0A0A
+                  bg_opa: COVER
+                  radius: 8
+                  pad_all: 10
+                  border_width: 1
+                  border_color: 0x00BCD4
+                  widgets:
+                    - label:
+                        align: TOP_LEFT
+                        text: "\U000F0502"
+                        text_font: mdi
+                        text_color: 0x00BCD4
+                    - label:
+                        align: TOP_LEFT
+                        x: 28
+                        text: "Teplota"
+                        text_font: roboto
+                        text_color: 0xFFFFFF
+                    # První řádek: Interiér - teplota a vlhkost
+                    - label:
+                        id: indoor_temp_hum
+                        align: LEFT_MID
+                        y: -20
+                        text: "--°C  --%"
+                        text_font: roboto
+                        text_color: 0x00BCD4
+                    # Druhý řádek: Exteriér - teplota a vlhkost
+                    - label:
+                        id: outdoor_temp_hum
+                        align: LEFT_MID
+                        y: 10
+                        text: "--°C  --%"
+                        text_font: roboto
+                        text_color: 0x666666
+                    - label:
+                        align: BOTTOM_LEFT
+                        y: -6
+                        text: "BME280"
+                        text_font: roboto_sm
+                        text_color: 0x666666
+
+              # Pravý dolní: Loads
               - obj: # load_card
                   id: load_card
                   x: 560
-                  y: 100
+                  y: 190
                   width: 200
                   height: 158
                   bg_color: 0x0A0A0A

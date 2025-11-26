@@ -110,6 +110,25 @@ i2c:
 
 # DS3231 RTC je konfigurován v network.yaml v sekci time
 
+# BME280 Temperature and Humidity Sensor (LaskaKit)
+sensor:
+  - platform: bme280_i2c
+    i2c_id: bus_a
+    address: 0x77  # Default I2C address for BME280
+    temperature:
+      name: "Indoor Temperature"
+      id: bme280_temperature
+      unit_of_measurement: "°C"
+    humidity:
+      name: "Indoor Humidity"
+      id: bme280_humidity
+      unit_of_measurement: "%"
+    pressure:
+      name: "BME280 Pressure"
+      id: bme280_pressure      
+    
+    update_interval: 15s
+
 # Backlight
 # GPIO16 is mapped to RS-485 output port, pin A
 # This GPIO should be wired to the solderpad on the right of the ESP32-S3 module, next to its antenna, below 2 * 0603 ceramic capacitors
